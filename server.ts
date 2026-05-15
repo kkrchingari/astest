@@ -8,6 +8,9 @@ import { PersonaVariant, MockSession, McqSession } from './models/sessions.js';
 import { PERSONA_VARIANTS } from './lib/personaData.js';
 import { hashPassword, comparePassword, generateToken, verifyToken } from './lib/auth.js';
 
+import { callAI } from './lib/ai.js';
+import { SYSTEM_PROMPTS } from './lib/prompts.js';
+
 declare global {
   namespace Express {
     interface Request {
@@ -39,9 +42,6 @@ const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   }
   next();
 };
-
-import { callAI } from './lib/ai';
-import { SYSTEM_PROMPTS } from './lib/prompts';
 
 export async function startServer() {
   const app = express();
