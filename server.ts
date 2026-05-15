@@ -1,12 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import cors from 'cors';
-import { connectDB } from './lib/mongo';
-import { User, Candidate, Test, Settings } from './models';
-import { McqBank } from './models/mcq';
-import { PersonaVariant, MockSession, McqSession } from './models/sessions';
-import { PERSONA_VARIANTS } from './lib/personaData';
-import { hashPassword, comparePassword, generateToken, verifyToken } from './lib/auth';
+import { connectDB } from './lib/mongo.js';
+import { User, Candidate, Test, Settings } from './models/index.js';
+import { McqBank } from './models/mcq.js';
+import { PersonaVariant, MockSession, McqSession } from './models/sessions.js';
+import { PERSONA_VARIANTS } from './lib/personaData.js';
+import { hashPassword, comparePassword, generateToken, verifyToken } from './lib/auth.js';
 
 declare global {
   namespace Express {
