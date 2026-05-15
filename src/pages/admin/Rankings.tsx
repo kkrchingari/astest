@@ -116,12 +116,6 @@ export default function Analytics() {
     document.body.removeChild(link);
   };
 
-  const filteredCandidates = (candidates: any[]) => candidates.filter((c: any) => 
-    c.name?.toLowerCase().includes(search.toLowerCase()) || 
-    c.phone?.includes(search) ||
-    c.primarySkill?.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

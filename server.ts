@@ -43,6 +43,29 @@ const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+const requirePermission = (permission: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    
+    if (req.user.role === 'super_admin') return next();
+    
+    try {
+      const user = await (User as any).findById(req.user.id);
+      if (!user || !user.active) {
+        return res.status(403).json({ error: 'Account inactive or not found' });
+      }
+
+      if (user.role === 'ops_admin' && user.permissions?.includes(permission)) {
+        return next();
+      }
+      
+      res.status(403).json({ error: `Permission '${permission}' required` });
+    } catch (err) {
+      res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+};
+
 export async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -130,6 +153,7 @@ export async function startServer() {
           name: user.name,
           phone: user.phone,
           role: user.role,
+          permissions: user.permissions || [],
           candidateStatus
         }
       });
@@ -139,7 +163,7 @@ export async function startServer() {
   });
 
   // Candidate APIs
-  app.get('/api/candidates', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/candidates', authenticate, requirePermission('candidates'), async (req: Request, res: Response) => {
     try {
       const candidates = await Candidate.find({} as any).sort({ createdAt: -1 });
       
@@ -174,16 +198,20 @@ export async function startServer() {
     }
   });
 
-  app.post('/api/candidates', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.post('/api/candidates', authenticate, requirePermission('candidates'), async (req: Request, res: Response) => {
     const { name, email, phone, skills, yearsExperience, password } = req.body;
     try {
+      // Find current user name
+      const admin = await (User as any).findById(req.user.id);
+
       const candidate = await Candidate.create({
         name,
         email,
         phone,
         skills,
         yearsExperience,
-        createdBy: req.user.id
+        createdBy: req.user.id,
+        createdByName: admin?.name || 'Admin'
       });
 
       const passwordHash = await hashPassword(password || phone);
@@ -192,7 +220,9 @@ export async function startServer() {
         phone,
         passwordHash,
         role: 'candidate',
-        candidateId: candidate._id
+        candidateId: candidate._id,
+        createdBy: req.user.id,
+        createdByName: admin?.name || 'Admin'
       });
 
       res.status(201).json(candidate);
@@ -216,7 +246,7 @@ export async function startServer() {
     }
   });
 
-  app.post('/api/tests', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.post('/api/tests', authenticate, requirePermission('create_test'), async (req: Request, res: Response) => {
     const { candidateId, testType, order, config } = req.body;
     try {
       let populatedPersonas = [];
@@ -241,6 +271,9 @@ export async function startServer() {
         }));
       }
 
+      // Find current user name
+      const admin = await (User as any).findById(req.user.id);
+
       const test = await Test.create({
         candidateId,
         testType,
@@ -248,7 +281,9 @@ export async function startServer() {
         config: {
           personas: populatedPersonas,
           mcqConfig: (testType === 'mcq' || testType === 'both') ? config.mcqConfig : undefined
-        }
+        },
+        createdBy: req.user.id,
+        createdByName: admin?.name || 'Admin'
       });
       await (Candidate as any).findByIdAndUpdate(candidateId, { status: 'invited' }, { new: true });
       res.status(201).json(test);
@@ -257,7 +292,7 @@ export async function startServer() {
     }
   });
 
-  app.get('/api/tests', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/tests', authenticate, requirePermission('create_test'), async (req: Request, res: Response) => {
     try {
       const tests = await Test.find({} as any).sort({ createdAt: -1 });
       const enrichedTests = await Promise.all(tests.map(async (t: any) => {
@@ -273,7 +308,7 @@ export async function startServer() {
     }
   });
 
-  app.post('/api/admin/ai-insights', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.post('/api/admin/ai-insights', authenticate, requirePermission('analytics'), async (req: Request, res: Response) => {
     try {
       const { prompt } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Prompt required' });
@@ -365,7 +400,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
     }
   });
 
-  app.get('/api/personas', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/personas', authenticate, requirePermission('personas'), async (req: Request, res: Response) => {
     try {
       const personas = await PersonaVariant.find({} as any).sort({ personaType: 1, variantIndex: 1 });
       res.json(personas);
@@ -927,7 +962,74 @@ Keep answers professional, data-driven, and focused on business growth.`;
     }
   });
 
-  app.get('/api/settings', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  // Admin Management Routes (Super Admin Only)
+  app.get('/api/super/admins', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const admins = await User.find({ role: 'ops_admin' } as any).sort({ createdAt: -1 });
+      res.json(admins);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/super/admins', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
+    const { name, phone, password, permissions } = req.body;
+    try {
+      const existing = await User.findOne({ phone } as any);
+      if (existing) return res.status(400).json({ error: 'User with this phone already exists' });
+
+      const adminUser = await (User as any).findById(req.user.id);
+      const passwordHash = await hashPassword(password);
+      
+      const newAdmin = await User.create({
+        name,
+        phone,
+        passwordHash,
+        role: 'ops_admin',
+        permissions: permissions || [],
+        createdBy: req.user.id,
+        createdByName: adminUser?.name || 'Super Admin',
+        active: true
+      });
+
+      res.status(201).json(newAdmin);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/super/admins/:id', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
+    const { name, phone, password, permissions, active } = req.body;
+    try {
+      const updateData: any = { name, phone, permissions, active };
+      if (password) {
+        updateData.passwordHash = await hashPassword(password);
+      }
+
+      const updated = await (User as any).findByIdAndUpdate(req.params.id, updateData, { new: true });
+      if (!updated) return res.status(404).json({ error: 'Admin not found' });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/super/admins/:id', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const admin = await (User as any).findById(req.params.id);
+      if (!admin || admin.role !== 'ops_admin') {
+        return res.status(404).json({ error: 'Ops admin not found' });
+      }
+
+      await (User as any).findByIdAndDelete(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/settings', authenticate, requirePermission('settings'), async (req: Request, res: Response) => {
     try {
       let settings = await Settings.findOne({} as any);
       if (!settings) {
@@ -954,7 +1056,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
   });
 
   // Admin MCQ Bank
-  app.get('/api/admin/mcq-bank', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/admin/mcq-bank', authenticate, requirePermission('mcq'), async (req: Request, res: Response) => {
     try {
       const questions = await McqBank.find({} as any).sort({ createdAt: -1 });
       res.json(questions);
@@ -963,7 +1065,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
     }
   });
 
-  app.post('/api/admin/mcq-bank', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.post('/api/admin/mcq-bank', authenticate, requirePermission('mcq'), async (req: Request, res: Response) => {
     try {
       const question = await McqBank.create({
         ...req.body,
@@ -975,7 +1077,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
     }
   });
 
-  app.delete('/api/admin/mcq-bank/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.delete('/api/admin/mcq-bank/:id', authenticate, requirePermission('mcq'), async (req: Request, res: Response) => {
     try {
       await (McqBank as any).findByIdAndDelete(req.params.id);
       res.json({ success: true });
@@ -984,7 +1086,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
     }
   });
 
-  app.post('/api/admin/mcq-bank/generate-ai', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  app.post('/api/admin/mcq-bank/generate-ai', authenticate, requirePermission('mcq'), async (req: Request, res: Response) => {
     const { skill, difficulty, count } = req.body;
     try {
       const prompt = SYSTEM_PROMPTS.MCQ_GEN

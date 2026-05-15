@@ -374,7 +374,7 @@ export default function CreateTest() {
                               {t.candidateName || 'Unknown Practitioner'}
                            </p>
                            <p className="text-[10px] uppercase font-bold tracking-widest text-astro-navy/40">
-                              {new Date(t.createdAt).toLocaleString()}
+                              {new Date(t.createdAt).toLocaleString()} • BY {t.createdByName || 'ADMIN'}
                            </p>
                         </div>
                      </div>

@@ -72,6 +72,7 @@ export default function CandidatesList() {
       'Mock Score (%)', 
       'MCQ Score (%)', 
       'Final Tier',
+      'Added By',
       'Min Rate (Fixed)',
       'Variable (Per Minute)',
       'System Share (%)'
@@ -88,6 +89,7 @@ export default function CandidatesList() {
       c.mockScore || 0,
       c.mcqScore || 0,
       c.finalTier || 'Senior',
+      c.createdByName || 'Admin',
       c.earningCard?.fixedRate || 0,
       c.earningCard?.variableRate || 0,
       c.earningCard?.systemShare || 0
@@ -145,6 +147,7 @@ export default function CandidatesList() {
               <TableHead className="py-4 px-6 text-astro-gold font-bold uppercase text-[10px] tracking-[0.2em]">System</TableHead>
               <TableHead className="py-4 px-6 text-astro-gold font-bold uppercase text-[10px] tracking-[0.2em]">Status</TableHead>
               <TableHead className="py-4 px-6 text-astro-gold font-bold uppercase text-[10px] tracking-[0.2em]">Evaluation</TableHead>
+              <TableHead className="py-4 px-6 text-astro-gold font-bold uppercase text-[10px] tracking-[0.2em]">Added By</TableHead>
               <TableHead className="py-4 px-6 text-astro-gold font-bold uppercase text-[10px] tracking-[0.2em] text-right">Records</TableHead>
             </TableRow>
           </TableHeader>
@@ -199,6 +202,11 @@ export default function CandidatesList() {
                        <span className="font-serif text-xs font-bold italic text-astro-navy">
                          {c.status === 'completed' || c.status === 'published' ? (c.finalTier || 'Senior') : 'PENDING'}
                        </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-5 px-6">
+                    <div className="text-[10px] font-bold text-astro-navy/60 uppercase tracking-widest">
+                       {c.createdByName || 'Admin'}
                     </div>
                   </TableCell>
                   <TableCell className="py-5 px-6 text-right">

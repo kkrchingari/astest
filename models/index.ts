@@ -5,8 +5,11 @@ const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['super_admin', 'ops_admin', 'candidate'], required: true },
+  permissions: [{ type: String }], // e.g. ['candidates', 'analytics', 'mcq_bank', 'personas', 'settings']
   active: { type: Boolean, default: true },
   candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Candidate' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdByName: { type: String },
   lastLoginAt: { type: Date },
 }, { timestamps: true });
 
@@ -36,6 +39,7 @@ const CandidateSchema = new mongoose.Schema({
     pitch: String
   },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdByName: { type: String },
 }, { timestamps: true });
 
 export const Candidate = mongoose.models.Candidate || mongoose.model('Candidate', CandidateSchema);
@@ -68,6 +72,8 @@ const TestSchema = new mongoose.Schema({
   },
   browserFingerprint: String,
   ipAddress: String,
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdByName: { type: String },
 }, { timestamps: true });
 
 export const Test = mongoose.models.Test || mongoose.model('Test', TestSchema);

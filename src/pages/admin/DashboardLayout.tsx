@@ -18,7 +18,9 @@ import CreateTest from './CreateTest';
 import PersonasList from './PersonasList';
 import McqManagement from './McqManagement';
 import SettingsPage from './Settings';
+import ManageAdmins from './ManageAdmins';
 import { cn } from '@/lib/utils';
+import { ShieldCheck } from 'lucide-react';
 
 interface DashboardLayoutProps {
   user: any;
@@ -30,13 +32,24 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
   const location = useLocation();
 
   const navItems = [
-    { name: 'Candidates', path: '/dashboard', icon: Users },
-    { name: 'Create Test', path: '/dashboard/create-test', icon: ClipboardCheck },
-    { name: 'Analytics & AI', path: '/dashboard/analytics', icon: BarChart3 },
-    { name: 'MCQ Bank', path: '/dashboard/mcq', icon: BookOpen },
-    { name: 'Personas', path: '/dashboard/personas', icon: Sparkles },
-    { name: 'Settings', path: '/dashboard/settings', icon: Settings },
+    { name: 'Candidates', path: '/dashboard', icon: Users, permission: 'candidates' },
+    { name: 'Create Test', path: '/dashboard/create-test', icon: ClipboardCheck, permission: 'create_test' },
+    { name: 'Analytics & AI', path: '/dashboard/analytics', icon: BarChart3, permission: 'analytics' },
+    { name: 'MCQ Bank', path: '/dashboard/mcq', icon: BookOpen, permission: 'mcq' },
+    { name: 'Personas', path: '/dashboard/personas', icon: Sparkles, permission: 'personas' },
+    { name: 'Settings', path: '/dashboard/settings', icon: Settings, permission: 'settings' },
   ];
+
+  const adminManagementItem = { name: 'Manage Admins', path: '/dashboard/manage-admins', icon: ShieldCheck, permission: 'manage_admins' };
+
+  const filteredNavItems = navItems.filter(item => {
+    if (user.role === 'super_admin') return true;
+    return user.permissions?.includes(item.permission);
+  });
+
+  if (user.role === 'super_admin') {
+    filteredNavItems.push(adminManagementItem);
+  }
 
   return (
     <div className="flex h-screen bg-astro-cream overflow-hidden">
@@ -67,7 +80,7 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-4">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
@@ -128,7 +141,7 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-astro-gold opacity-60">Admin Panel</span>
               <span className="text-astro-gold/30">/</span>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-astro-navy">
-                {navItems.find(i => i.path === location.pathname)?.name || 'Pipeline'}
+                {filteredNavItems.find(i => i.path === location.pathname)?.name || 'Pipeline'}
               </span>
             </div>
           </div>
@@ -152,11 +165,11 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
           <section className="p-8 min-h-full max-w-7xl mx-auto w-full">
             <div className="mb-10">
               <p className="text-astro-gold font-serif italic text-lg opacity-80 mb-1">
-                {navItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}
+                {filteredNavItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}
               </p>
               <h1 className="text-4xl font-serif font-semibold text-astro-navy tracking-tight">
-                {navItems.find(i => i.path === location.pathname)?.name === 'Candidates' ? 'Audition Pipeline' : 
-                 navItems.find(i => i.path === location.pathname)?.name || 'Control Panel'}
+                {filteredNavItems.find(i => i.path === location.pathname)?.name === 'Candidates' ? 'Audition Pipeline' : 
+                 filteredNavItems.find(i => i.path === location.pathname)?.name || 'Control Panel'}
               </h1>
             </div>
 
@@ -168,6 +181,7 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
                 <Route path="mcq" element={<McqManagement />} />
                 <Route path="personas" element={<PersonasList />} />
                 <Route path="settings" element={<SettingsPage user={user} />} />
+                {user.role === 'super_admin' && <Route path="manage-admins" element={<ManageAdmins />} />}
               </Routes>
             </div>
           </section>
