@@ -81,9 +81,23 @@ export async function startServer() {
     }
   };
 
-  await seedDB();
+  try {
+    await seedDB();
+  } catch (seedErr) {
+    console.error('Seeding failed:', seedErr);
+    // Continue anyway, maybe DB is already seeded or we can't seed right now
+  }
 
   // API Routes
+  app.use(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await connectDB();
+      next();
+    } catch (err: any) {
+      res.status(500).json({ error: 'Database connection failed: ' + err.message });
+    }
+  });
+
   app.post('/api/auth/login', async (req: Request, res: Response) => {
     const { phone, password } = req.body;
     try {
@@ -1082,7 +1096,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.VERCEL !== '1') {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -1091,7 +1105,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
   }
 
   // Only listen on a port if we're not on Vercel
-  if (process.env.VERCEL !== '1') {
+  if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
@@ -1100,6 +1114,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
   return app;
 }
 
-export default startServer().catch(err => {
-  console.error('Failed to start server:', err);
-});
+const appPromise = startServer();
+
+export default appPromise;
+
