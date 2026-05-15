@@ -50,54 +50,57 @@ export async function startServer() {
   app.use(express.json());
   app.use(cors());
 
-  // Database Connection & Seeding
-  await connectDB();
-  
-  // Seed super_admin and PersonaVariants
-  const seedDB = async () => {
-    const adminExists = await User.findOne({ role: 'super_admin' } as any);
-    if (!adminExists) {
-      const passwordHash = await hashPassword('ChangeMe@123');
-      await User.create({
-        name: 'Super Admin',
-        phone: '9999999999',
-        passwordHash,
-        role: 'super_admin',
-        active: true
-      });
-      console.log('⚠️ Default super_admin created. Change password immediately.');
-    }
-
-    const personaCount = await PersonaVariant.countDocuments();
-    if (personaCount === 0) {
-      const now = new Date();
-      const withTimestamps = PERSONA_VARIANTS.map(p => ({
-        ...p,
-        createdAt: now,
-        updatedAt: now
-      }));
-      await PersonaVariant.insertMany(withTimestamps as any);
-      console.log('✅ Seeded 35 Persona Variants');
-    }
-  };
-
-  try {
-    await seedDB();
-  } catch (seedErr) {
-    console.error('Seeding failed:', seedErr);
-    // Continue anyway, maybe DB is already seeded or we can't seed right now
-  }
-
-  // API Routes
+  // Connection middleware - ensuring DB is connected on every request in serverless
   app.use(async (req: Request, res: Response, next: NextFunction) => {
     try {
       await connectDB();
       next();
     } catch (err: any) {
-      res.status(500).json({ error: 'Database connection failed: ' + err.message });
+      console.error('Database connection error in middleware:', err);
+      res.status(500).json({ 
+        error: 'Database connection failed', 
+        details: err.message 
+      });
     }
   });
 
+  // Seed super_admin and PersonaVariants - lazily or check first
+  const seedDB = async () => {
+    try {
+      const adminExists = await User.findOne({ role: 'super_admin' } as any);
+      if (!adminExists) {
+        const passwordHash = await hashPassword('ChangeMe@123');
+        await User.create({
+          name: 'Super Admin',
+          phone: '9999999999',
+          passwordHash,
+          role: 'super_admin',
+          active: true
+        });
+        console.log('⚠️ Default super_admin created. Change password immediately.');
+      }
+
+      const personaCount = await PersonaVariant.countDocuments();
+      if (personaCount === 0) {
+        const now = new Date();
+        const withTimestamps = PERSONA_VARIANTS.map(p => ({
+          ...p,
+          createdAt: now,
+          updatedAt: now
+        }));
+        await PersonaVariant.insertMany(withTimestamps as any);
+        console.log('✅ Seeded 35 Persona Variants');
+      }
+    } catch (err) {
+      console.error('Seeding error:', err);
+    }
+  };
+
+  // We don't necessarily need to block for seeding in every cold start
+  // but we should ensure it eventually runs
+  seedDB();
+
+  // API Routes
   app.post('/api/auth/login', async (req: Request, res: Response) => {
     const { phone, password } = req.body;
     try {
