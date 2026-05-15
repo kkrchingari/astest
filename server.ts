@@ -1,6 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import cors from 'cors';
 import { connectDB } from './lib/mongo';
 import { User, Candidate, Test, Settings } from './models';
@@ -41,7 +40,7 @@ const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-import { callAI } from './lib/openrouter';
+import { callAI } from './lib/ai';
 import { SYSTEM_PROMPTS } from './lib/prompts';
 
 export async function startServer() {
@@ -128,23 +127,26 @@ export async function startServer() {
       const candidates = await Candidate.find({} as any).sort({ createdAt: -1 });
       
       const enrichedCandidates = await Promise.all(candidates.map(async (c: any) => {
-        const mcqSession = await McqSession.findOne({} as any).populate({
-          path: 'testId',
-          match: { candidateId: c._id }
-        });
-        const mockSession = await MockSession.findOne({} as any).populate({
-          path: 'testId',
-          match: { candidateId: c._id }
-        });
+        // Find latest test for this candidate
+        const latestTest = await Test.findOne({ candidateId: c._id } as any).sort({ createdAt: -1 });
+        
+        let mcqScore = '0.0';
+        let mockScore = '0.0';
 
-        const mockScore = mockSession?.aiScores ? (
-          Object.values(mockSession.aiScores as Record<string, number>).reduce((a, b) => a + b, 0) / 6
-        ).toFixed(1) : '0.0';
+        if (latestTest) {
+          const mcqSession = await McqSession.findOne({ testId: latestTest._id } as any);
+          const mockSession = await MockSession.findOne({ testId: latestTest._id } as any);
+
+          if (mcqSession) mcqScore = mcqSession.adjustedScore?.toFixed(1) || '0.0';
+          if (mockSession?.aiScores) {
+            mockScore = (Object.values(mockSession.aiScores as Record<string, number>).reduce((a, b) => a + b, 0) / 6).toFixed(1);
+          }
+        }
 
         return {
           ...c.toObject(),
-          primarySkill: c.skills?.[0] || 'N/A',
-          mcqScore: mcqSession?.adjustedScore?.toFixed(1) || '0.0',
+          primarySkill: c.primarySkill || c.skills?.[0] || 'N/A',
+          mcqScore,
           mockScore
         };
       }));
@@ -200,30 +202,35 @@ export async function startServer() {
   app.post('/api/tests', authenticate, requireAdmin, async (req: Request, res: Response) => {
     const { candidateId, testType, order, config } = req.body;
     try {
-      const populatedPersonas = await Promise.all((config.personas || []).map(async (p: any) => {
-        // Find all variants for this type to pick one that actually exists
-        const variants = await PersonaVariant.find({ personaType: p.personaType } as any);
-        let selectedVariant = null;
-        
-        if (variants.length > 0) {
-          selectedVariant = variants[Math.floor(Math.random() * variants.length)];
-        }
+      let populatedPersonas = [];
+      
+      // Only populate personas if the test includes mock consultations
+      if (testType === 'mock_consult' || testType === 'both') {
+        populatedPersonas = await Promise.all((config.personas || []).map(async (p: any) => {
+          // Find all variants for this type to pick one that actually exists
+          const variants = await PersonaVariant.find({ personaType: p.personaType } as any);
+          let selectedVariant = null;
+          
+          if (variants.length > 0) {
+            selectedVariant = variants[Math.floor(Math.random() * variants.length)];
+          }
 
-        return {
-          personaType: p.personaType,
-          name: p.name || selectedVariant?.name || 'Client',
-          useRandomDob: p.useRandomDob,
-          variantIndex: selectedVariant?.variantIndex || 1
-        };
-      }));
+          return {
+            personaType: p.personaType,
+            name: p.name || selectedVariant?.name || 'Client',
+            useRandomDob: p.useRandomDob,
+            variantIndex: selectedVariant?.variantIndex || 1
+          };
+        }));
+      }
 
       const test = await Test.create({
         candidateId,
         testType,
         order,
         config: {
-          ...config,
-          personas: populatedPersonas
+          personas: populatedPersonas,
+          mcqConfig: (testType === 'mcq' || testType === 'both') ? config.mcqConfig : undefined
         }
       });
       await (Candidate as any).findByIdAndUpdate(candidateId, { status: 'invited' }, { new: true });
@@ -254,19 +261,89 @@ export async function startServer() {
       const { prompt } = req.body;
       if (!prompt) return res.status(400).json({ error: 'Prompt required' });
 
-      const candidates = await (Candidate as any).find();
-      const statsContext = `You are a data analyst for Astrolive. Currently there are ${candidates.length} candidates in the pipeline. Provide concise, strategic insights on how to improve astrology practitioner quality and increase app revenue through better vetting.`;
+      const candidates = await Candidate.find({} as any);
+      
+      const detailedData = await Promise.all(candidates.map(async (c: any) => {
+        const latestTest = await Test.findOne({ candidateId: c._id } as any).sort({ createdAt: -1 });
+        let scores = { mock: 0, mcq: 0 };
+        
+        if (latestTest) {
+          const mcqSession = await McqSession.findOne({ testId: latestTest._id } as any);
+          const mockSession = await MockSession.findOne({ testId: latestTest._id } as any);
+          
+          if (mcqSession) scores.mcq = Math.round(mcqSession.adjustedScore || 0);
+          if (mockSession?.aiScores) {
+            scores.mock = Math.round(Object.values(mockSession.aiScores as Record<string, number>).reduce((a, b) => a + b, 0) / 6);
+          }
+        }
 
-      const aiResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: [
-          { role: 'user', parts: [{ text: `${statsContext}\n\nUser Question: ${prompt}` }] }
-        ]
-      });
+        return {
+          name: c.name,
+          skill: c.primarySkill || c.skills?.[0] || 'N/A',
+          status: c.status,
+          scores,
+          pay: c.earningCard ? {
+            fixed: c.earningCard.fixedRate,
+            variable: c.earningCard.variableRate,
+            share: c.earningCard.systemShare,
+            tier: c.finalTier || 'Senior'
+          } : 'Not set'
+        };
+      }));
 
-      res.json({ reply: aiResponse.text() });
+      const statsContext = `You are the Lead Data Analyst for Astrolive.
+Below is the current REAL-TIME dataset of practitioners in the vetting pipeline:
+${JSON.stringify(detailedData, null, 2)}
+
+Your Goal: Provide concise, high-impact strategic insights.
+1. Answer specific questions about performance (scores), pay/monetization, or skills.
+2. Identify top performers (high mock/mcq scores).
+3. Suggest revenue optimization based on tiers and payout models.
+4. If asked about "test score pay", correlate their assessment results with their assigned rates.
+
+Keep answers professional, data-driven, and focused on business growth.`;
+
+      const reply = await callAI([
+        { role: 'system', content: statsContext },
+        { role: 'user', content: prompt }
+      ]);
+      res.json({ reply });
     } catch (error: any) {
       console.error('AI Insight Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/ai/translate', authenticate, async (req: Request, res: Response) => {
+    try {
+      const { text, targetLanguage, isMcq, question } = req.body;
+      let prompt = "";
+      let jsonMode = false;
+
+      if (isMcq && question) {
+        prompt = `Translate the following MCQ question and its options to ${targetLanguage}. 
+        Keep the structure identical. The output must be valid JSON matching this schema: { "question": "string", "options": ["string", "string", "string", "string"] }.
+        
+        QUESTION: ${question.question}
+        OPTIONS: ${JSON.stringify(question.options)}`;
+        jsonMode = true;
+      } else {
+        prompt = `Translate the following text to ${targetLanguage}. Return ONLY the translated text, no extra commentary or formatting.
+        
+        TEXT: ${text}`;
+      }
+
+      const reply = await callAI([
+        { role: 'user', content: prompt }
+      ], { json: jsonMode, temperature: 0 });
+
+      if (jsonMode) {
+        res.json(JSON.parse(reply));
+      } else {
+        res.json({ translatedText: reply });
+      }
+    } catch (error: any) {
+      console.error('Translation API Error:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -355,7 +432,32 @@ export async function startServer() {
 
           const result = JSON.parse(evaluation);
           session.aiScores = result.scores;
-          session.redFlags = result.redFlags;
+          
+          // Robustly handle redFlags
+          let rawFlags = result.redFlags;
+          if (typeof rawFlags === 'string') {
+            try {
+              rawFlags = JSON.parse(rawFlags);
+            } catch (e) {
+              rawFlags = [];
+            }
+          }
+          
+          if (Array.isArray(rawFlags)) {
+            session.redFlags = rawFlags.map((f: any) => {
+              if (typeof f === 'string') {
+                return { type: 'General', severity: 'low', evidence: f };
+              }
+              return {
+                type: f.type || 'General',
+                severity: ['low', 'medium', 'critical'].includes(f.severity) ? f.severity : 'low',
+                evidence: f.evidence || String(f)
+              };
+            });
+          } else {
+            session.redFlags = [];
+          }
+
           session.judgeSummary = result.summary;
           await session.save();
         } catch (e) {
@@ -547,7 +649,32 @@ export async function startServer() {
 
       const result = JSON.parse(evaluation);
       session.aiScores = result.scores;
-      session.redFlags = result.redFlags;
+      
+      // Robustly handle redFlags
+      let rawFlags = result.redFlags;
+      if (typeof rawFlags === 'string') {
+        try {
+          rawFlags = JSON.parse(rawFlags);
+        } catch (e) {
+          rawFlags = [];
+        }
+      }
+      
+      if (Array.isArray(rawFlags)) {
+        session.redFlags = rawFlags.map((f: any) => {
+          if (typeof f === 'string') {
+            return { type: 'General', severity: 'low', evidence: f };
+          }
+          return {
+            type: f.type || 'General',
+            severity: ['low', 'medium', 'critical'].includes(f.severity) ? f.severity : 'low',
+            evidence: f.evidence || String(f)
+          };
+        });
+      } else {
+        session.redFlags = [];
+      }
+
       session.judgeSummary = result.summary;
       await session.save();
 
@@ -564,55 +691,90 @@ export async function startServer() {
       if (!test) return res.status(404).json({ error: 'Test not found' });
 
       const candidate = await (Candidate as any).findById(test.candidateId);
-      const skill = candidate?.skills?.[0] || candidate?.primarySkill || 'vedic';
+      const skill = (candidate as any)?.primarySkill || (candidate as any)?.skills?.[0] || 'vedic';
       const mcqConfig = test.config.mcqConfig || { count: 3, difficultyMix: { easy: 1, medium: 1, hard: 1 } };
       
       const finalQuestions: any[] = [];
       const difficulties = ['easy', 'medium', 'hard'] as const;
+      const totalRequested = mcqConfig.count || 10;
 
       for (const diff of difficulties) {
-        const count = mcqConfig.difficultyMix[diff] || 0;
+        const percent = mcqConfig.difficultyMix[diff] || 0;
+        if (percent === 0) continue;
+        
+        const count = Math.round((totalRequested * percent) / 100);
         if (count === 0) continue;
 
-        const bankCount = Math.floor(count * 0.8);
-        const aiCount = count - bankCount;
+        console.log(`Generating mcq for skill: ${skill}, diff: ${diff}, count: ${count}`);
 
         // 1. Get from Bank
         const bankQuestions = await McqBank.aggregate([
-          { $match: { skill, difficulty: diff } },
-          { $sample: { size: bankCount } }
+          { $match: { 
+            skill: { $regex: new RegExp(`^${skill}$`, 'i') }, 
+            difficulty: diff 
+          } },
+          { $sample: { size: count } }
         ]);
 
         finalQuestions.push(...bankQuestions);
 
-        // 2. Need more or AI quota?
+        // 2. Need more?
         const needed = count - bankQuestions.length;
         if (needed > 0) {
-          const prompt = SYSTEM_PROMPTS.MCQ_GEN
-            .replace('{skill}', skill)
-            .replace('{difficulty}', diff)
-            .replace('{count}', needed.toString());
+          try {
+            const prompt = SYSTEM_PROMPTS.MCQ_GEN
+              .replace('{skill}', skill)
+              .replace('{difficulty}', diff)
+              .replace('{count}', needed.toString());
 
-          const aiResponse = await callAI([
-            { role: 'system', content: prompt }
-          ], { json: true });
+            const aiResponse = await callAI([
+              { role: 'system', content: prompt }
+            ], { json: true });
 
-          const newQuestions = JSON.parse(aiResponse);
-          
-          // Save to bank for future
-          const savedQuestions = await Promise.all(newQuestions.map(async (q: any) => {
-            return McqBank.create({
-              skill,
-              difficulty: diff,
-              question: q.question,
-              options: q.options,
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation,
-              source: 'ai'
-            });
-          }));
+            let newQuestions = [];
+            try {
+              const parsed = JSON.parse(aiResponse);
+              newQuestions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+            } catch (pe) {
+              console.error('JSON Parse Error for MCQ AI:', aiResponse);
+              continue;
+            }
+            
+            // Save to bank for future
+            const savedQuestions = await Promise.all(newQuestions.map(async (q: any) => {
+              try {
+                return await McqBank.create({
+                  skill,
+                  difficulty: diff,
+                  question: q.question,
+                  options: q.options,
+                  correctAnswer: q.correctAnswer,
+                  explanation: q.explanation || '',
+                  source: 'ai'
+                });
+              } catch (createErr) {
+                return null;
+              }
+            }));
 
-          finalQuestions.push(...savedQuestions);
+            const validSaved = savedQuestions.filter(q => q !== null);
+            finalQuestions.push(...validSaved);
+          } catch (aiErr: any) {
+            console.error(`AI Generation failed for ${skill}-${diff}:`, aiErr.message);
+          }
+        }
+      }
+
+      if (finalQuestions.length === 0) {
+        // Fallback: search for ANY questions of this skill if mix failed
+        const fallback = await McqBank.aggregate([
+          { $match: { skill: { $regex: new RegExp(`^${skill}$`, 'i') } } },
+          { $sample: { size: totalRequested } }
+        ]);
+        if (fallback.length > 0) {
+          finalQuestions.push(...fallback);
+        } else {
+          throw new Error(`Could not generate any questions for skill: ${skill}. Please ensure questions exist in management or AI is configured.`);
         }
       }
 
@@ -817,21 +979,32 @@ export async function startServer() {
         { role: 'system', content: prompt }
       ], { json: true });
 
-      const newQuestions = JSON.parse(aiResponse);
-      
+      let newQuestions = [];
+      try {
+        const parsed = JSON.parse(aiResponse);
+        newQuestions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+      } catch (e) {
+        console.error('JSON Parse Error for Admin MCQ:', aiResponse);
+        throw new Error('Failed to parse AI generated questions');
+      }
+
       const savedQuestions = await Promise.all(newQuestions.map(async (q: any) => {
-        return McqBank.create({
-          skill,
-          difficulty,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation,
-          source: 'ai'
-        });
+        try {
+          return await McqBank.create({
+            skill,
+            difficulty,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation || '',
+            source: 'ai'
+          });
+        } catch (err) {
+          return null;
+        }
       }));
 
-      res.status(201).json(savedQuestions);
+      res.status(201).json(savedQuestions.filter(q => q !== null));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -848,7 +1021,13 @@ export async function startServer() {
         { role: 'system', content: prompt }
       ], { json: true });
 
-      const personaData = JSON.parse(aiResponse);
+      let personaData;
+      try {
+        personaData = JSON.parse(aiResponse);
+      } catch (e) {
+        console.error('JSON Parse Error for persona:', aiResponse);
+        throw new Error('Failed to parse AI generated persona');
+      }
       
       // Get max variantIndex for this type
       const latest = await PersonaVariant.findOne({ personaType: type } as any).sort({ variantIndex: -1 });
@@ -880,9 +1059,9 @@ export async function startServer() {
       const tests = await Test.find({ candidateId } as any).sort({ createdAt: -1 });
       const testIds = tests.map(t => t._id);
 
-      // Find all sessions for these tests
-      const mockSessions = await MockSession.find({ testId: { $in: testIds } } as any);
-      const mcqSessions = await McqSession.find({ testId: { $in: testIds } } as any);
+      // Find all sessions for these tests, sorted by creation date descending
+      const mockSessions = await MockSession.find({ testId: { $in: testIds } } as any).sort({ createdAt: -1 });
+      const mcqSessions = await McqSession.find({ testId: { $in: testIds } } as any).sort({ createdAt: -1 });
 
       res.json({
         candidate,
@@ -896,7 +1075,8 @@ export async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -910,9 +1090,12 @@ export async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Only listen on a port if we're not on Vercel
+  if (process.env.VERCEL !== '1') {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 
   return app;
 }

@@ -42,7 +42,7 @@ export default function CreateTest() {
     const fetchCandidates = async () => {
       try {
         const { data } = await api.get('/candidates');
-        setCandidates(data.filter((c: any) => c.status === 'invited' || c.status === 'in_progress'));
+        setCandidates(data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -57,14 +57,21 @@ export default function CreateTest() {
     if (!selectedCandidate) return alert('Please select a candidate');
     
     try {
+      const filteredConfig: any = {};
+      
+      if (testType === 'mock_consult' || testType === 'both') {
+        filteredConfig.personas = personaConfigs;
+      }
+      
+      if (testType === 'mcq' || testType === 'both') {
+        filteredConfig.mcqConfig = mcqConfig;
+      }
+
       const { data } = await api.post('/tests', {
         candidateId: selectedCandidate,
         testType,
         order: testType === 'both' ? testOrder : undefined,
-        config: {
-          personas: personaConfigs,
-          mcqConfig
-        }
+        config: filteredConfig
       });
       fetchRecentTests();
       setSelectedCandidate('');

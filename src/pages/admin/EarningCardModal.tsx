@@ -89,7 +89,7 @@ export default function EarningCardModal({ isOpen, onClose, candidate, onSuccess
                     <TrendingUp className="w-16 h-16" />
                   </div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-astro-gold/60">Expected Mid-Cap</p>
-                  <p className="text-3xl font-serif font-bold text-astro-gold">₹{card.projectedMonthlyEarnings.mid.toLocaleString()}</p>
+                  <p className="text-3xl font-serif font-bold text-astro-gold">₹{card.projectedMonthlyEarnings?.mid?.toLocaleString() ?? '0'}</p>
                </div>
             </div>
 
@@ -103,7 +103,7 @@ export default function EarningCardModal({ isOpen, onClose, candidate, onSuccess
             </div>
 
             <div className="space-y-3">
-               {card.conditions.map((condition: string, i: number) => (
+               {card.conditions?.map((condition: string, i: number) => (
                  <div key={i} className="flex gap-3 text-xs text-astro-navy/60 items-center">
                     <div className="w-1 h-1 rounded-full bg-astro-gold" />
                     {condition}

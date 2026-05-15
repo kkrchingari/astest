@@ -95,57 +95,59 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-2xl bg-astro-cream border-l border-astro-gold/20 overflow-y-auto p-0">
-        <div className="h-full flex flex-col">
-          <header className="p-8 bg-astro-navy text-white relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-8 opacity-10">
-                <Stars className="w-32 h-32 text-astro-gold" />
-             </div>
-             <div className="relative z-10 space-y-4">
-                <div className="flex items-center gap-4">
-                   <div className="w-20 h-20 rounded-3xl bg-astro-gold/10 border border-astro-gold/30 flex items-center justify-center font-serif text-3xl text-astro-gold font-bold italic shadow-2xl">
-                      {candidate.name[0]}
-                   </div>
-                   <div>
-                      <h2 className="text-3xl font-serif font-bold italic">{candidate.name}</h2>
-                      <div className="flex items-center gap-2 mt-1">
-                         <Badge className="bg-astro-gold text-astro-navy uppercase text-[9px] font-bold tracking-widest px-2">{candidate.primarySkill}</Badge>
-                         <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest">{candidate.yearsExperience} Years Exp</span>
-                      </div>
-                   </div>
-                </div>
-                
-                <div className="flex gap-3">
-                   <Button 
-                    onClick={() => setIsEarningModalOpen(true)}
-                    className="bg-astro-gold text-astro-navy hover:bg-white h-11 px-6 rounded-xl font-bold text-xs tracking-widest shadow-xl flex items-center gap-2"
-                   >
-                      <TrendingUp className="w-4 h-4" /> EARNING CARD
-                   </Button>
-                   {candidate.status === 'completed' && (
-                      <Button 
-                        onClick={handlePublish}
-                        disabled={isPublishing}
-                        className="bg-white/10 text-white hover:bg-white/20 border border-white/20 h-11 px-6 rounded-xl font-bold text-xs tracking-widest flex items-center gap-2"
-                      >
-                         {isPublishing ? 'PUBLISHING...' : 'PUBLISH RESULT'}
-                      </Button>
-                   )}
-                </div>
-             </div>
-          </header>
+      <SheetContent className="sm:max-w-2xl bg-astro-cream border-l border-astro-gold/20 p-0 flex flex-col h-full overflow-hidden">
+        <header className="shrink-0 p-8 bg-astro-navy text-white relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Stars className="w-32 h-32 text-astro-gold" />
+           </div>
+           <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-4">
+                 <div className="w-20 h-20 rounded-3xl bg-astro-gold/10 border border-astro-gold/30 flex items-center justify-center font-serif text-3xl text-astro-gold font-bold italic shadow-2xl">
+                    {candidate.name[0]}
+                 </div>
+                 <div>
+                    <h2 className="text-3xl font-serif font-bold italic">{candidate.name}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                       <Badge className="bg-astro-gold text-astro-navy uppercase text-[9px] font-bold tracking-widest px-2">{candidate.primarySkill}</Badge>
+                       <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest">{candidate.yearsExperience} Years Exp</span>
+                    </div>
+                 </div>
+              </div>
+              
+              <div className="flex gap-3">
+                 <Button 
+                  onClick={() => setIsEarningModalOpen(true)}
+                  className="bg-astro-gold text-astro-navy hover:bg-white h-11 px-6 rounded-xl font-bold text-xs tracking-widest shadow-xl flex items-center gap-2"
+                 >
+                    <TrendingUp className="w-4 h-4" /> EARNING CARD
+                 </Button>
+                 {candidate.status === 'completed' && (
+                    <Button 
+                      onClick={handlePublish}
+                      disabled={isPublishing}
+                      className="bg-white/10 text-white hover:bg-white/20 border border-white/20 h-11 px-6 rounded-xl font-bold text-xs tracking-widest flex items-center gap-2"
+                    >
+                       {isPublishing ? 'PUBLISHING...' : 'PUBLISH RESULT'}
+                    </Button>
+                 )}
+              </div>
+           </div>
+        </header>
 
-          <main className="flex-1 p-8">
-             <Tabs defaultValue="overview" className="h-full flex flex-col">
-                <TabsList className="bg-white border border-astro-gold/10 p-1 rounded-2xl mb-8 w-fit">
-                   <TabsTrigger value="overview" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold">Overview</TabsTrigger>
-                   <TabsTrigger value="protocols" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold">Protocols</TabsTrigger>
-                   <TabsTrigger value="mock" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold">Mock Chat</TabsTrigger>
-                   <TabsTrigger value="mcq" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold">MCQ Flow</TabsTrigger>
-                   <TabsTrigger value="earning" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold">Earning</TabsTrigger>
+        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+           <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0 h-full">
+              <div className="px-8 pt-8 shrink-0 overflow-x-auto no-scrollbar">
+                <TabsList className="bg-white border border-astro-gold/10 p-1 rounded-2xl mb-2 w-max inline-flex">
+                   <TabsTrigger value="overview" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold whitespace-nowrap">Overview</TabsTrigger>
+                   <TabsTrigger value="protocols" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold whitespace-nowrap">Protocols</TabsTrigger>
+                   <TabsTrigger value="mock" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold whitespace-nowrap">Mock Chat</TabsTrigger>
+                   <TabsTrigger value="mcq" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold whitespace-nowrap">MCQ Flow</TabsTrigger>
+                   <TabsTrigger value="earning" className="rounded-xl px-6 data-[state=active]:bg-astro-navy data-[state=active]:text-astro-gold whitespace-nowrap">Earning</TabsTrigger>
                 </TabsList>
+              </div>
 
-                <TabsContent value="overview" className="space-y-8 mt-0 overflow-y-auto pr-2">
+              <div className="flex-1 overflow-y-auto px-8 pb-8 pr-4">
+                <TabsContent value="overview" className="space-y-8 mt-0 animate-in fade-in slide-in-from-bottom-4">
                    <div className="grid grid-cols-2 gap-6">
                       <div className="p-6 bg-white rounded-3xl border border-astro-gold/10 shadow-sm space-y-2">
                          <p className="text-[10px] font-bold uppercase tracking-widest text-astro-navy/40">Technical Prowess</p>
@@ -226,7 +228,7 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                     </section>
                 </TabsContent>
 
-                <TabsContent value="protocols" className="mt-0 space-y-4">
+                <TabsContent value="protocols" className="mt-0 space-y-4 animate-in fade-in slide-in-from-bottom-4">
                    {report?.tests && report.tests.length > 0 ? (
                       report.tests.map((test: any) => (
                          <div key={test._id} className="p-6 bg-white rounded-3xl border border-astro-gold/10 shadow-sm flex items-center justify-between">
@@ -266,7 +268,7 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                    )}
                 </TabsContent>
 
-                 <TabsContent value="mock" className="mt-0 space-y-6">
+                 <TabsContent value="mock" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                    {report?.mockSessions && report.mockSessions.length > 0 ? (
                      report.mockSessions.map((session: any) => (
                        <div key={session._id} className="bg-white rounded-3xl border border-astro-gold/10 overflow-hidden shadow-sm">
@@ -276,7 +278,7 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                                Avg: {session.aiScores ? ((Object.values(session.aiScores).reduce((a: any, b: any) => (a as number) + (b as number), 0) as number) / 6).toFixed(1) : 'N/A'}
                             </Badge>
                          </div>
-                         <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+                         <div className="p-6 space-y-4">
                             {session.transcript.map((msg: any, mIdx: number) => (
                                <div key={mIdx} className={cn(
                                  "flex flex-col gap-1",
@@ -302,7 +304,7 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                    )}
                  </TabsContent>
 
-                 <TabsContent value="mcq" className="mt-0 space-y-6">
+                 <TabsContent value="mcq" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                     {report?.mcqSessions && report.mcqSessions.length > 0 ? (
                       report.mcqSessions.map((session: any) => (
                         <div key={session._id} className="p-8 bg-white rounded-3xl border border-astro-gold/10 shadow-sm space-y-6">
@@ -342,7 +344,7 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                     )}
                  </TabsContent>
 
-                <TabsContent value="earning" className="mt-0">
+                <TabsContent value="earning" className="mt-0 animate-in fade-in slide-in-from-bottom-4">
                    {candidate.earningCard ? (
                       <div className="space-y-6">
                          <div className="p-8 bg-astro-navy text-white rounded-3xl shadow-xl space-y-6">
@@ -360,7 +362,7 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                             <div className="pt-4 border-t border-white/10 flex justify-between">
                                <div>
                                   <p className="text-[9px] uppercase font-bold text-white/30 tracking-widest">Mid-Cap Proj.</p>
-                                  <p className="text-xl font-bold text-astro-gold">₹{candidate.earningCard.projectedMonthlyEarnings.mid.toLocaleString()}</p>
+                                  <p className="text-xl font-bold text-astro-gold">₹{candidate.earningCard?.projectedMonthlyEarnings?.mid?.toLocaleString() ?? '0'}</p>
                                </div>
                                <Button variant="link" className="text-astro-gold text-xs p-0 font-bold uppercase tracking-widest">Details View</Button>
                             </div>
@@ -378,9 +380,9 @@ export default function CandidateDetailDrawer({ isOpen, onClose, candidateId, on
                       </div>
                    )}
                 </TabsContent>
-             </Tabs>
-          </main>
-        </div>
+              </div>
+           </Tabs>
+        </main>
 
         <EarningCardModal 
           isOpen={isEarningModalOpen}

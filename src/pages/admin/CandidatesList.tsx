@@ -10,7 +10,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, UserPlus, Filter, MoreHorizontal, ExternalLink } from 'lucide-react';
+import { Search, UserPlus, Filter, MoreHorizontal, ExternalLink, Download } from 'lucide-react';
 import api from '@/src/lib/api';
 import AddCandidateModal from './AddCandidateModal';
 import CandidateDetailDrawer from './CandidateDetailDrawer';
@@ -58,6 +58,55 @@ export default function CandidatesList() {
     c.primarySkill?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleExport = () => {
+    if (candidates.length === 0) return;
+
+    // Build CSV Headers
+    const headers = [
+      'Name', 
+      'Phone', 
+      'Email', 
+      'Primary System', 
+      'Exp (Years)', 
+      'Status', 
+      'Mock Score (%)', 
+      'MCQ Score (%)', 
+      'Final Tier',
+      'Min Rate (Fixed)',
+      'Variable (Per Minute)',
+      'System Share (%)'
+    ];
+
+    // Build Rows
+    const rows = candidates.map((c: any) => [
+      `"${c.name}"`,
+      c.phone,
+      c.email || 'N/A',
+      c.primarySkill || (c.skills?.[0] || 'N/A'),
+      c.yearsExperience,
+      c.status,
+      c.mockScore || 0,
+      c.mcqScore || 0,
+      c.finalTier || 'Senior',
+      c.earningCard?.fixedRate || 0,
+      c.earningCard?.variableRate || 0,
+      c.earningCard?.systemShare || 0
+    ]);
+
+    // Combine
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `astrolive_complete_database_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-astro-gold/20 shadow-sm">
@@ -71,8 +120,12 @@ export default function CandidatesList() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="h-10 gap-2 px-4 border-astro-gold/20 rounded-lg text-xs font-bold uppercase tracking-widest text-astro-navy/60 hover:bg-astro-cream">
-            <Filter className="w-3.5 h-3.5" /> Filter
+          <Button 
+            variant="outline" 
+            onClick={handleExport}
+            className="h-10 gap-2 px-4 border-astro-gold/20 rounded-lg text-xs font-bold uppercase tracking-widest text-astro-navy/60 hover:bg-astro-cream"
+          >
+            <Download className="w-3.5 h-3.5" /> Export DB
           </Button>
         </div>
         

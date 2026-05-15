@@ -12,7 +12,11 @@ export async function connectDB() {
     };
 
     if (!process.env.MONGODB_URI) {
-      throw new Error('Please define the MONGODB_URI environment variable inside .env.example');
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Please define the MONGODB_URI environment variable');
+      }
+      console.warn('MONGODB_URI is missing. Database connection will fail.');
+      return null;
     }
 
     cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {

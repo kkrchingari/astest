@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Stars, PlayCircle, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '@/src/lib/api';
 
 interface CandidateHomeProps {
   user: any;
@@ -11,6 +12,8 @@ interface CandidateHomeProps {
 
 export default function CandidateHome({ user, onLogout }: CandidateHomeProps) {
   const navigate = useNavigate();
+  const [activeTest, setActiveTest] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user && user.candidateStatus === 'published') {
@@ -18,7 +21,22 @@ export default function CandidateHome({ user, onLogout }: CandidateHomeProps) {
     } else if (user && user.candidateStatus === 'completed') {
       navigate('/test-complete');
     }
+
+    const fetchActiveTest = async () => {
+      try {
+        const { data } = await api.get('/tests/active');
+        setActiveTest(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchActiveTest();
   }, [user, navigate]);
+
+  const showMock = activeTest?.testType === 'mock_consult' || activeTest?.testType === 'both';
+  const showMcq = activeTest?.testType === 'mcq' || activeTest?.testType === 'both';
 
   return (
     <div className="min-h-screen bg-astro-cream flex flex-col font-sans">
@@ -52,18 +70,22 @@ export default function CandidateHome({ user, onLogout }: CandidateHomeProps) {
           </CardHeader>
           <CardContent className="p-10 space-y-8 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-6 bg-astro-cream rounded-2xl border border-astro-gold/10 hover:border-astro-gold/30 transition-colors group">
-                <h4 className="font-serif text-lg font-bold text-astro-navy mb-2 italic">Phase I: Empathic Reach</h4>
-                <p className="text-xs text-astro-navy/60 leading-relaxed group-hover:text-astro-navy transition-colors">
-                  Consult with 3 unique spirits. Your resonance and technical logic will be weighed.
-                </p>
-              </div>
-              <div className="p-6 bg-astro-navy/5 rounded-2xl border border-astro-gold/10 hover:border-astro-gold/30 transition-colors group">
-                <h4 className="font-serif text-lg font-bold text-astro-navy mb-2 italic">Phase II: Sacred Logic</h4>
-                <p className="text-xs text-astro-navy/60 leading-relaxed group-hover:text-astro-navy transition-colors">
-                  A technical scroll to verify your understanding of the cosmic laws.
-                </p>
-              </div>
+              {showMock && (
+                <div className="p-6 bg-astro-cream rounded-2xl border border-astro-gold/10 hover:border-astro-gold/30 transition-colors group">
+                  <h4 className="font-serif text-lg font-bold text-astro-navy mb-2 italic">Phase: Empathic Reach</h4>
+                  <p className="text-xs text-astro-navy/60 leading-relaxed group-hover:text-astro-navy transition-colors">
+                    Consult with unique spirits. Your resonance and technical logic will be weighed.
+                  </p>
+                </div>
+              )}
+              {showMcq && (
+                <div className="p-6 bg-astro-navy/5 rounded-2xl border border-astro-gold/10 hover:border-astro-gold/30 transition-colors group">
+                  <h4 className="font-serif text-lg font-bold text-astro-navy mb-2 italic">Phase: Sacred Logic</h4>
+                  <p className="text-xs text-astro-navy/60 leading-relaxed group-hover:text-astro-navy transition-colors">
+                    A technical scroll to verify your understanding of the cosmic laws.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-astro-cream p-8 rounded-2xl border border-astro-gold/10 space-y-4">

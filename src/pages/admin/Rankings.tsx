@@ -65,6 +65,63 @@ export default function Analytics() {
     mcqScore: r.mcqScore,
   }));
 
+  const handleExport = () => {
+    if (rankings.length === 0) return;
+
+    // Build CSV Headers
+    const headers = [
+      'Name', 
+      'Phone', 
+      'Email', 
+      'Primary System', 
+      'Exp (Years)', 
+      'Status', 
+      'Mock Score (%)', 
+      'MCQ Score (%)', 
+      'Global Score (/100)',
+      'Final Tier',
+      'Min Rate (Fixed)',
+      'Variable (Per Minute)',
+      'System Share (%)'
+    ];
+
+    // Build Rows
+    const rows = rankings.map((r: any) => [
+      r.name,
+      r.phone,
+      r.email || 'N/A',
+      r.primarySkill,
+      r.yearsExperience,
+      r.status,
+      r.mockScore || 0,
+      r.mcqScore || 0,
+      Math.floor(((r.mockScore || 0) + (r.mcqScore || 0)) / 2),
+      r.finalTier || 'Senior',
+      r.earningCard?.fixedRate || 0,
+      r.earningCard?.variableRate || 0,
+      r.earningCard?.systemShare || 0
+    ]);
+
+    // Combine
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `astrolive_practitioner_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const filteredCandidates = (candidates: any[]) => candidates.filter((c: any) => 
+    c.name?.toLowerCase().includes(search.toLowerCase()) || 
+    c.phone?.includes(search) ||
+    c.primarySkill?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -128,7 +185,12 @@ export default function Analytics() {
           <div className="bg-white rounded-2xl border border-astro-gold/20 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-astro-gold/10 flex justify-between items-center bg-astro-cream/20">
               <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-astro-navy">Performance Rank</h3>
-              <Button variant="outline" size="sm" className="h-8 text-[9px] font-bold tracking-widest border-astro-gold/20">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 text-[9px] font-bold tracking-widest border-astro-gold/20"
+                onClick={handleExport}
+              >
                 <Download className="w-3 h-3 mr-2" /> EXPORT
               </Button>
             </div>

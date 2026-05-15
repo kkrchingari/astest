@@ -27,6 +27,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
     email: '',
     phone: '',
     skills: [] as string[],
+    primarySkill: 'vedic',
     yearsExperience: '',
     languages: [] as string[],
     password: ''
@@ -155,6 +156,20 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-widest font-bold text-astro-navy/40 ml-1">Universal Primary System</Label>
+                <Select value={formData.primarySkill} onValueChange={(val) => setFormData({...formData, primarySkill: val})}>
+                  <SelectTrigger className="bg-astro-cream/30 border-astro-gold/20 rounded-xl h-12 focus:ring-astro-gold">
+                    <SelectValue placeholder="System" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-astro-gold/10">
+                    {SKILL_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs font-bold uppercase tracking-widest">{opt.label}</SelectItem>
+                    ))}
+                    <SelectItem value="astrology" className="text-xs font-bold uppercase tracking-widest">Generic Astrology</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="exp" className="text-[10px] uppercase tracking-widest font-bold text-astro-navy/40 ml-1">Solar Cycles (Exp)</Label>
                 <Input 
                   id="exp" 
@@ -165,6 +180,9 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                   className="bg-astro-cream/30 border-astro-gold/20 rounded-xl h-12 px-4 focus:ring-astro-gold text-astro-navy"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold text-astro-navy/40 ml-1">Digital Correspondence (Email)</Label>
                 <Input 
@@ -176,19 +194,18 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                   className="bg-astro-cream/30 border-astro-gold/20 rounded-xl h-12 px-4 focus:ring-astro-gold text-astro-navy"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold text-astro-navy/40 ml-1">Access Password</Label>
-              <Input 
-                id="password" 
-                type="text"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                placeholder="Default: Phone No. for login"
-                className="bg-astro-cream/30 border-astro-gold/20 rounded-xl h-12 px-4 focus:ring-astro-gold text-astro-navy"
-              />
-              <p className="text-[8px] text-astro-navy/40 italic ml-1">Set a custom password or leave blank to use the candidate's phone number.</p>
+              <div className="space-y-2 text-left">
+                <Label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold text-astro-navy/40 ml-1">Access Password</Label>
+                <Input 
+                  id="password" 
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  placeholder="Default: Phone No."
+                  className="bg-astro-cream/30 border-astro-gold/20 rounded-xl h-12 px-4 focus:ring-astro-gold text-astro-navy"
+                />
+                <p className="text-[8px] text-astro-navy/40 italic ml-1">Leave blank to use phone number as password.</p>
+              </div>
             </div>
 
             <DialogFooter className="pt-4 gap-3">
