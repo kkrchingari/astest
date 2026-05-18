@@ -178,7 +178,10 @@ export default function McqManagement() {
                     min={1} 
                     max={20}
                     value={aiConfig.count}
-                    onChange={(e) => setAiConfig({...aiConfig, count: parseInt(e.target.value)})}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setAiConfig({...aiConfig, count: isNaN(val) ? 0 : val});
+                    }}
                     className="h-12 bg-astro-cream/30 border-astro-gold/10 rounded-xl"
                   />
                 </div>

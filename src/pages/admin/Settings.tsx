@@ -88,7 +88,10 @@ export default function Settings({ user }: { user: any }) {
                   type="number" 
                   value={settings.commissionRate}
                   disabled={!isSuperAdmin}
-                  onChange={(e) => setSettings({ ...settings, commissionRate: parseInt(e.target.value) })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setSettings({ ...settings, commissionRate: isNaN(val) ? 0 : val });
+                  }}
                   className="h-12 bg-astro-cream/30 border-astro-gold/10 rounded-xl focus:ring-astro-gold"
                 />
                 <p className="text-[10px] text-astro-navy/30 italic">Platform's share of practitioner's revenue.</p>
@@ -103,7 +106,10 @@ export default function Settings({ user }: { user: any }) {
                   type="number" 
                   value={settings.passScoreMcq}
                   disabled={!isSuperAdmin}
-                  onChange={(e) => setSettings({ ...settings, passScoreMcq: parseInt(e.target.value) })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setSettings({ ...settings, passScoreMcq: isNaN(val) ? 0 : val });
+                  }}
                   className="h-12 bg-astro-cream/30 border-astro-gold/10 rounded-xl focus:ring-astro-gold"
                 />
                 <p className="text-[10px] text-astro-navy/30 italic">Minimum adjusted score to qualify for Tier selection.</p>

@@ -48,7 +48,8 @@ const TestSchema = new mongoose.Schema({
   candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Candidate', required: true },
   testType: { type: String, enum: ['mock_consult', 'mcq', 'both'], required: true },
   order: { type: String, enum: ['mock_first', 'mcq_first'] },
-  status: { type: String, enum: ['pending', 'active', 'completed', 'expired'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'active', 'completed', 'expired', 'inactive'], default: 'pending' },
+  isActive: { type: Boolean, default: true },
   startedAt: { type: Date },
   completedAt: { type: Date },
   config: {

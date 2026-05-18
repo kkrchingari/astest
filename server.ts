@@ -285,7 +285,7 @@ export async function startServer() {
         createdBy: req.user.id,
         createdByName: admin?.name || 'Admin'
       });
-      await (Candidate as any).findByIdAndUpdate(candidateId, { status: 'invited' }, { new: true });
+      await (Candidate as any).findByIdAndUpdate(candidateId, { status: 'invited' }, { returnDocument: 'after' });
       res.status(201).json(test);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -416,12 +416,11 @@ Keep answers professional, data-driven, and focused on business growth.`;
       if (!user || user.role !== 'candidate') return res.status(403).json({ error: 'Not a candidate' });
       
       const test: any = await Test.findOne({ 
-        candidateId: user.candidateId, 
-        status: { $in: ['pending', 'active'] } 
-      } as any);
+        candidateId: user.candidateId
+      } as any).sort({ createdAt: -1 }); // Get most recent test
 
       if (test) {
-        // Hydrate personas dynamically in case old tests didn't save the names or variant indices
+        // Hydrate personas dynamically
         const hydratedPersonas = await Promise.all(test.config.personas.map(async (p: any) => {
           if (!p.name || p.name === 'Client' || !p.variantIndex) {
             const variants = await PersonaVariant.find({ personaType: p.personaType } as any);
@@ -441,7 +440,21 @@ Keep answers professional, data-driven, and focused on business growth.`;
         return res.json(testObj);
       }
       
-      res.json(test);
+      res.json(null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin Toggle Test Status
+  app.put('/api/tests/:id/toggle-active', authenticate, requirePermission('create_test'), async (req: Request, res: Response) => {
+    try {
+      const test = await (Test as any).findById(req.params.id);
+      if (!test) return res.status(404).json({ error: 'Test not found' });
+      
+      test.isActive = !test.isActive;
+      await test.save();
+      res.json({ success: true, isActive: test.isActive });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -451,6 +464,9 @@ Keep answers professional, data-driven, and focused on business growth.`;
     try {
       const test = await (Test as any).findById(req.params.id);
       if (!test) return res.status(404).json({ error: 'Test not found' });
+      
+      if (!test.isActive) return res.status(403).json({ error: 'This test link is currently inactive.' });
+      if (test.status === 'completed') return res.status(403).json({ error: 'Test already completed.' });
       
       test.status = 'active';
       test.startedAt = new Date();
@@ -517,8 +533,8 @@ Keep answers professional, data-driven, and focused on business growth.`;
         }
       }
 
-      await (Candidate as any).findByIdAndUpdate(test.candidateId, { status: 'completed' }, { new: true });
-      await (User as any).findOneAndUpdate({ candidateId: test.candidateId } as any, { active: false }, { new: true });
+      await (Candidate as any).findByIdAndUpdate(test.candidateId, { status: 'completed' }, { returnDocument: 'after' });
+      await (User as any).findOneAndUpdate({ candidateId: test.candidateId } as any, { active: false }, { returnDocument: 'after' });
 
       res.json({ success: true });
     } catch (error: any) {
@@ -912,9 +928,9 @@ Keep answers professional, data-driven, and focused on business growth.`;
       }
 
       const mcqScore = mcqSession?.adjustedScore || 0;
-      const mockScoreAvg = mockSession?.aiScores ? (
-        Object.values(mockSession.aiScores as Record<string, number>).reduce((a, b) => a + b, 0) / 6
-      ) : 0;
+      const scores = mockSession?.aiScores ? Object.values(mockSession.aiScores as Record<string, any>) : [];
+      const mockScoreSum = scores.reduce((a, b) => a + (Number(b) || 0), 0);
+      const mockScoreAvg = scores.length > 0 ? mockScoreSum / scores.length : 0;
 
       const aggregateScore = (mcqScore * 0.4) + (mockScoreAvg * 0.6);
 
@@ -924,12 +940,22 @@ Keep answers professional, data-driven, and focused on business growth.`;
         { role: 'system', content: prompt }
       ], { json: true });
 
-      const cardData = JSON.parse(aiResponse);
+      // Robust JSON Parsing
+      let cardData;
+      try {
+        cardData = JSON.parse(aiResponse);
+      } catch (parseError) {
+        console.error('Initial JSON parse failed, attempting cleanup:', parseError);
+        // Replace problematic literal control characters (newlines/tabs) with spaces
+        // This is safe for JSON structure and prevents "Bad control character" errors
+        const cleaned = aiResponse.replace(/[\n\r\t]/g, ' ');
+        cardData = JSON.parse(cleaned);
+      }
       
       const candidate = await (Candidate as any).findByIdAndUpdate(candidateId, {
         earningCard: cardData,
         finalTier: cardData.tier.toLowerCase()
-      }, { new: true });
+      }, { returnDocument: 'after' });
 
       res.json(candidate);
     } catch (error: any) {
@@ -940,7 +966,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
 
   app.post('/api/candidates/:id/publish', authenticate, requireAdmin, async (req: Request, res: Response) => {
     try {
-      const candidate = await (Candidate as any).findByIdAndUpdate(req.params.id, { status: 'published' }, { new: true });
+      const candidate = await (Candidate as any).findByIdAndUpdate(req.params.id, { status: 'published' }, { returnDocument: 'after' });
       if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
       await (User as any).findOneAndUpdate({ phone: (candidate as any).phone } as any, { active: true });
@@ -1006,7 +1032,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
         updateData.passwordHash = await hashPassword(password);
       }
 
-      const updated = await (User as any).findByIdAndUpdate(req.params.id, updateData, { new: true });
+      const updated = await (User as any).findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
       if (!updated) return res.status(404).json({ error: 'Admin not found' });
 
       res.json(updated);

@@ -83,6 +83,16 @@ export default function CreateTest() {
     }
   };
 
+  const handleToggleActive = async (id: string) => {
+    try {
+      await api.put(`/tests/${id}/toggle-active`);
+      fetchRecentTests();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to toggle test status');
+    }
+  };
+
   const filteredCandidates = candidates.filter((c: any) => 
     c.name.toLowerCase().includes(candidateSearch.toLowerCase()) || 
     c.phone.includes(candidateSearch)
@@ -314,11 +324,14 @@ export default function CreateTest() {
                 <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-astro-gold/20 rounded-full flex items-center justify-center text-[10px] font-black">{index + 1}</div>
                 <div className="space-y-3">
                   <Label className="text-[9px] uppercase tracking-[0.4em] font-black text-astro-navy/30 ml-1">Archetype Focus</Label>
-                  <Select onValueChange={(val) => {
-                    const newConfigs = [...personaConfigs];
-                    newConfigs[index].personaType = val;
-                    setPersonaConfigs(newConfigs);
-                  }}>
+                  <Select 
+                    value={config.personaType}
+                    onValueChange={(val) => {
+                      const newConfigs = [...personaConfigs];
+                      newConfigs[index].personaType = val;
+                      setPersonaConfigs(newConfigs);
+                    }}
+                  >
                     <SelectTrigger className="bg-white border-astro-gold/10 h-14 rounded-xl focus:ring-astro-gold/20 font-serif italic text-lg">
                       <SelectValue placeholder="Manifestation Type" />
                     </SelectTrigger>
@@ -379,21 +392,46 @@ export default function CreateTest() {
                         </div>
                      </div>
                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-astro-gold/30">
-                           {t.testType}
-                        </Badge>
-                        <Button 
-                           variant="ghost" 
-                           size="sm" 
-                           className="text-astro-gold hover:text-astro-navy h-10 px-4 rounded-xl font-bold text-[10px] uppercase tracking-widest gap-2"
-                           onClick={() => {
-                             const url = `${window.location.origin}/login`;
-                             navigator.clipboard.writeText(url);
-                             alert('Test Portal Link copied to clipboard!');
-                           }}
-                        >
-                           Copy Portal Link
-                        </Button>
+                        <div className="flex flex-col items-end gap-1">
+                           <Badge variant="outline" className={cn(
+                              "text-[8px] uppercase tracking-widest border shadow-none",
+                              t.isActive === false 
+                                ? "bg-rose-50 text-rose-500 border-rose-200" 
+                                : "bg-emerald-50 text-emerald-600 border-emerald-200"
+                           )}>
+                              {t.isActive === false ? 'INACTIVE' : 'ACTIVE'}
+                           </Badge>
+                           <Badge variant="outline" className="text-[8px] uppercase tracking-widest border-astro-gold/30">
+                              {t.testType}
+                           </Badge>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                           <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className={cn(
+                                "h-8 px-3 rounded-lg font-bold text-[9px] uppercase tracking-widest",
+                                t.isActive === false 
+                                  ? "border-emerald-200 text-emerald-600 hover:bg-emerald-50" 
+                                  : "border-rose-200 text-rose-500 hover:bg-rose-50"
+                              )}
+                              onClick={() => handleToggleActive(t._id)}
+                           >
+                              {t.isActive === false ? 'Activate' : 'Deactivate'}
+                           </Button>
+                           <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-astro-gold hover:text-astro-navy h-8 px-3 rounded-lg font-bold text-[9px] uppercase tracking-widest"
+                              onClick={() => {
+                                const url = `${window.location.origin}/login`;
+                                navigator.clipboard.writeText(url);
+                                alert('Test Portal Link copied to clipboard!');
+                              }}
+                           >
+                              Copy Link
+                           </Button>
+                        </div>
                      </div>
                   </div>
                 ))}

@@ -69,6 +69,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
         email: '',
         phone: '',
         skills: [],
+        primarySkill: 'vedic',
         yearsExperience: '',
         languages: [],
         password: ''

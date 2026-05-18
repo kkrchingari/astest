@@ -127,8 +127,25 @@ export default function TestInterface({ user }: { user: any }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [candidate, setCandidate] = useState<any>(null);
   
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (test && !test.isActive && redirectCountdown > 0) {
+      const timer = setInterval(() => {
+        setRedirectCountdown(prev => {
+          if (prev <= 1) {
+            window.location.href = 'https://astrolive.app/chat';
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [test, redirectCountdown]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -141,14 +158,19 @@ export default function TestInterface({ user }: { user: any }) {
         if (testRes.data) {
           const data = testRes.data;
           setTest(data);
-          if (data.testType === 'mcq') {
-            setCurrentStage('mcq');
-          } else if (data.testType === 'both' && data.order === 'mcq_first') {
-            setCurrentStage('mcq');
+          
+          if (data.isActive && data.status !== 'completed') {
+            if (data.testType === 'mcq') {
+              setCurrentStage('mcq');
+            } else if (data.testType === 'both' && data.order === 'mcq_first') {
+              setCurrentStage('mcq');
+            } else {
+              setCurrentStage('mock');
+            }
+            await api.post(`/tests/${data._id}/start`, { fingerprint: navigator.userAgent });
           } else {
-            setCurrentStage('mock');
+            setCurrentStage('complete'); 
           }
-          await api.post(`/tests/${data._id}/start`, { fingerprint: navigator.userAgent });
         } else {
           setTestError("No pending audition found.");
         }
@@ -359,6 +381,51 @@ export default function TestInterface({ user }: { user: any }) {
   }, [test, candidate, user.primarySkill]);
 
   if (testError) return <div className="h-screen bg-slate-50 flex items-center justify-center text-slate-900 font-bold p-4 text-center">{testError}</div>;
+
+  if (test && !test.isActive) {
+    return (
+      <div className="h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center space-y-6">
+        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-2">
+          <AlertCircle className="w-10 h-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-serif font-black text-astro-navy tracking-tight">Assesment link inactive</h2>
+          <p className="text-astro-navy/60 max-w-md mx-auto">
+            This audition link has been deactivated. If you believe this is a discrepancy, please contact your recruiter.
+          </p>
+        </div>
+        <div className="border-t border-astro-gold/20 pt-6 w-full max-w-xs">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-astro-navy/40 mb-2">Redirecting to Astrolive in</p>
+          <div className="text-4xl font-serif font-black text-astro-gold">{redirectCountdown}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (test && test.status === 'completed') {
+    return (
+      <div className="h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center space-y-6">
+        <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-2">
+          <CheckCircle2 className="w-10 h-10" />
+        </div>
+        <div className="space-y-4">
+          <h2 className="text-3xl font-serif font-black text-astro-navy tracking-tight">You have already written the test</h2>
+          <p className="text-astro-navy/60 max-w-md mx-auto">
+            Your results are under review. Thank you for participating in the audition process.
+          </p>
+          <div className="pt-4">
+            <Button 
+               onClick={() => window.location.href = 'https://astrolive.app'}
+               className="bg-astro-navy text-astro-gold font-bold px-8 h-12 rounded-xl"
+            >
+              Explore Astrolive
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!test || (currentStage === 'loading')) return <div className="h-screen bg-[#1a1a3e] flex items-center justify-center text-white italic">Manifesting Test Environment...</div>;
 
   const isTimeCritical = mcqTimer < 300; 
