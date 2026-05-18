@@ -545,13 +545,30 @@ Keep answers professional, data-driven, and focused on business growth.`;
   app.post('/api/chart/compute', authenticate, async (req: Request, res: Response) => {
     const { dob, tob, pob, system } = req.body;
     try {
+      if (!dob || !tob || !pob) {
+        return res.status(400).json({ error: 'Birth details (DOB, TOB, POB) are required' });
+      }
+
       const chart = await callAI([
         { role: 'system', content: SYSTEM_PROMPTS.CHART_COMPUTE },
-        { role: 'user', content: `DOB: ${dob}, TOB: ${tob}, POB: ${pob}, System: ${system}` }
-      ]);
-      res.json(JSON.parse(chart));
+        { role: 'user', content: `DOB: ${dob}, TOB: ${tob}, POB: ${pob}, System: ${system || 'vedic'}` }
+      ], { json: true, temperature: 0 });
+
+      if (!chart) {
+        throw new Error('AI returned an empty chart response');
+      }
+
+      try {
+        res.json(JSON.parse(chart));
+      } catch (parseErr) {
+        console.error('Failed to parse AI chart JSON:', chart);
+        // Attempt a basic cleanup if it's almost JSON
+        const cleaned = chart.replace(/[\n\r\t]/g, ' ').trim();
+        res.json(JSON.parse(cleaned));
+      }
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Chart Compute Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to compute chart' });
     }
   });
 

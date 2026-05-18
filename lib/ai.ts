@@ -25,12 +25,30 @@ export async function callAI(messages: any[], opts: any = {}) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const text = await response.text().catch(() => '');
+      let errorData = {};
+      try {
+        errorData = JSON.parse(text);
+      } catch (e) {
+        errorData = { raw: text };
+      }
       throw new Error(`OpenRouter API error: ${response.status} ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
-    let text = data.choices[0]?.message?.content || '';
+    const responseText = await response.text();
+    if (!responseText) {
+      throw new Error('OpenRouter returned an empty response');
+    }
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse OpenRouter JSON:', responseText);
+      throw new Error('Invalid JSON response from OpenRouter');
+    }
+
+    let text = data.choices?.[0]?.message?.content || '';
 
     if (opts.json) {
       // Sometimes models wrap in markdown even when asked for JSON format

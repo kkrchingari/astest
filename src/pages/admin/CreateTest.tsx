@@ -264,8 +264,11 @@ export default function CreateTest() {
                 <Label className="text-[9px] uppercase tracking-widest font-black text-astro-navy/40">Total Questions</Label>
                 <Input 
                   type="number" 
-                  value={String(mcqConfig.count || '')} 
-                  onChange={(e) => setMcqConfig({...mcqConfig, count: parseInt(e.target.value) || 0})}
+                  value={String(mcqConfig.count ?? '')} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setMcqConfig({...mcqConfig, count: isNaN(val) ? 0 : val});
+                  }}
                   className="h-14 bg-astro-cream/20 border-astro-gold/20 rounded-xl"
                 />
               </div>
@@ -273,11 +276,14 @@ export default function CreateTest() {
                 <Label className="text-[9px] uppercase tracking-widest font-black text-astro-navy/40">Easy %</Label>
                 <Input 
                   type="number" 
-                  value={String(mcqConfig.difficultyMix.easy || '')} 
-                  onChange={(e) => setMcqConfig({
-                    ...mcqConfig, 
-                    difficultyMix: {...mcqConfig.difficultyMix, easy: parseInt(e.target.value) || 0}
-                  })}
+                  value={String(mcqConfig.difficultyMix.easy ?? '')} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setMcqConfig({
+                      ...mcqConfig, 
+                      difficultyMix: {...mcqConfig.difficultyMix, easy: isNaN(val) ? 0 : val}
+                    });
+                  }}
                   className="h-14 bg-astro-cream/20 border-astro-gold/20 rounded-xl"
                 />
               </div>
@@ -285,11 +291,14 @@ export default function CreateTest() {
                 <Label className="text-[9px] uppercase tracking-widest font-black text-astro-navy/40">Medium %</Label>
                 <Input 
                   type="number" 
-                  value={String(mcqConfig.difficultyMix.medium || '')} 
-                  onChange={(e) => setMcqConfig({
-                    ...mcqConfig, 
-                    difficultyMix: {...mcqConfig.difficultyMix, medium: parseInt(e.target.value) || 0}
-                  })}
+                  value={String(mcqConfig.difficultyMix.medium ?? '')} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setMcqConfig({
+                      ...mcqConfig, 
+                      difficultyMix: {...mcqConfig.difficultyMix, medium: isNaN(val) ? 0 : val}
+                    });
+                  }}
                   className="h-14 bg-astro-cream/20 border-astro-gold/20 rounded-xl"
                 />
               </div>
@@ -297,11 +306,14 @@ export default function CreateTest() {
                 <Label className="text-[9px] uppercase tracking-widest font-black text-astro-navy/40">Hard %</Label>
                 <Input 
                   type="number" 
-                  value={String(mcqConfig.difficultyMix.hard || '')} 
-                  onChange={(e) => setMcqConfig({
-                    ...mcqConfig, 
-                    difficultyMix: {...mcqConfig.difficultyMix, hard: parseInt(e.target.value) || 0}
-                  })}
+                  value={String(mcqConfig.difficultyMix.hard ?? '')} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setMcqConfig({
+                      ...mcqConfig, 
+                      difficultyMix: {...mcqConfig.difficultyMix, hard: isNaN(val) ? 0 : val}
+                    });
+                  }}
                   className="h-14 bg-astro-cream/20 border-astro-gold/20 rounded-xl"
                 />
               </div>
