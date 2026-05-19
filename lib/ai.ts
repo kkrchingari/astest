@@ -1,8 +1,11 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export async function callAI(messages: any[], opts: any = {}) {
+  // First try OpenRouter
   try {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      throw new Error('OPENROUTER_API_KEY environment variable is required');
+      throw new Error('OPENROUTER_API_KEY missing');
     }
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -10,7 +13,7 @@ export async function callAI(messages: any[], opts: any = {}) {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://astrolive.ai", // Optional, for OpenRouter rankings
+        "HTTP-Referer": "https://astrolive.ai",
         "X-Title": "Astrolive Vetting"
       },
       body: JSON.stringify({
@@ -24,40 +27,58 @@ export async function callAI(messages: any[], opts: any = {}) {
       })
     });
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      let errorData = {};
-      try {
-        errorData = JSON.parse(text);
-      } catch (e) {
-        errorData = { raw: text };
+    if (response.ok) {
+      const responseText = await response.text();
+      if (responseText) {
+        let data = JSON.parse(responseText);
+        let text = data.choices?.[0]?.message?.content || '';
+        if (opts.json) {
+          text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        }
+        return text;
       }
-      throw new Error(`OpenRouter API error: ${response.status} ${JSON.stringify(errorData)}`);
+    }
+    
+    console.warn('OpenRouter failed, falling back to Gemini...');
+  } catch (error: any) {
+    console.error('OpenRouter Error, trying Gemini fallback:', error.message);
+  }
+
+  // Fallback to Gemini
+  try {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required for fallback');
     }
 
-    const responseText = await response.text();
-    if (!responseText) {
-      throw new Error('OpenRouter returned an empty response');
-    }
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    
+    const systemMessage = messages.find(m => m.role === 'system');
+    const userMessages = messages.filter(m => m.role !== 'system');
 
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Failed to parse OpenRouter JSON:', responseText);
-      throw new Error('Invalid JSON response from OpenRouter');
-    }
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      systemInstruction: systemMessage?.content
+    });
 
-    let text = data.choices?.[0]?.message?.content || '';
+    const chat = model.startChat({
+      history: userMessages.slice(0, -1).map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      })),
+    });
 
+    const lastMessage = userMessages[userMessages.length - 1].content;
+    const result = await chat.sendMessage(lastMessage);
+    const responseText = result.response.text();
+
+    let text = responseText;
     if (opts.json) {
-      // Sometimes models wrap in markdown even when asked for JSON format
       text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     }
-
     return text;
   } catch (error: any) {
-    console.error('OpenRouter AI Error:', error);
-    throw error;
+    console.error('Gemini Fallback Error:', error);
+    throw new Error('Both OpenRouter and Gemini failed. Please check your API keys.');
   }
 }
