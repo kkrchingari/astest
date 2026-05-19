@@ -5,8 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Stars, Send, Clock, AlertCircle, Loader2, 
   ChevronLeft, ChevronRight, Bookmark, CheckCircle2,
-  Globe, Menu, X, HelpCircle
+  Globe, Menu, X, HelpCircle, LayoutGrid
 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 import api from '@/src/lib/api';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -431,22 +439,91 @@ export default function TestInterface({ user }: { user: any }) {
   const isTimeCritical = mcqTimer < 300; 
 
   if (currentStage === 'mcq') {
+    const renderPalette = (isMobile = false) => (
+      <div className={cn("flex flex-col h-full bg-white", isMobile ? "" : "w-[280px] border-r border-slate-200 shadow-sm")}>
+        <div className="p-5 border-b border-slate-100">
+          <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">{t('question_palette')}</h4>
+          <div className="grid grid-cols-5 gap-2.5">
+            {mcqQuestions.map((_, i) => {
+              const isSelected = mcqIndex === i;
+              const isAnswered = !!mcqResponses[mcqQuestions[i].id];
+              const isMarked = markedForReview.has(i);
+              
+              const button = (
+                <button
+                  key={i}
+                  onClick={() => setMcqIndex(i)}
+                  className={cn(
+                    "w-10 h-10 rounded-md flex items-center justify-center text-xs font-bold transition-all border",
+                    isSelected ? "ring-2 ring-indigo-500 ring-offset-2" : "",
+                    isMarked 
+                      ? "bg-purple-500 text-white border-purple-600" 
+                      : isAnswered 
+                        ? "bg-emerald-500 text-white border-emerald-600" 
+                        : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                  )}
+                >
+                  {i + 1}
+                </button>
+              );
+
+              if (isMobile) {
+                return (
+                  <SheetClose key={i} asChild>
+                    {button}
+                  </SheetClose>
+                );
+              }
+
+              return button;
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          <div>
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">{t('legend')}</h4>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
+                <div className="w-3.5 h-3.5 rounded bg-emerald-500" /> {t('answered')}
+              </div>
+              <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
+                <div className="w-3.5 h-3.5 rounded bg-purple-500" /> {t('marked_review')}
+              </div>
+              <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
+                <div className="w-3.5 h-3.5 rounded bg-slate-50 border border-slate-200" /> {t('not_visited')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-slate-100 bg-slate-50/50">
+          <Button 
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 shadow-lg shadow-indigo-100"
+            onClick={handleSubmitTest}
+          >
+            {t('submit_test')}
+          </Button>
+        </div>
+      </div>
+    );
+
     return (
-      <div className="h-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden select-none">
+      <div className="h-screen flex flex-col bg-[#F8F9FA] text-slate-900 overflow-hidden select-none">
         {/* TOP BAR */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-30 shadow-sm shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100">
-              <Stars className="w-5 h-5" />
-              <span className="font-bold text-sm tracking-tight">{testName}</span>
+        <header className="h-14 md:h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 z-30 shadow-sm shrink-0 sticky top-0">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100">
+              <Stars className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="font-bold text-[10px] md:text-sm tracking-tight truncate max-w-[140px] md:max-w-none">{testName}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Globe className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 md:gap-6">
+            <div className="flex items-center gap-1 md:gap-3">
+              <Globe className="w-3 h-3 md:w-4 md:h-4 text-slate-400" />
               <Select value={currentLanguage} onValueChange={setCurrentLanguage}>
-                <SelectTrigger className="w-[150px] h-9 text-xs font-semibold border-slate-200 bg-slate-50">
+                <SelectTrigger className="w-[100px] md:w-[150px] h-8 md:h-9 text-[10px] md:text-xs font-semibold border-slate-200 bg-slate-50">
                   <SelectValue placeholder="Language" />
                 </SelectTrigger>
                 <SelectContent>
@@ -458,11 +535,11 @@ export default function TestInterface({ user }: { user: any }) {
             </div>
 
             <div className={cn(
-              "flex items-center gap-3 px-4 py-1.5 rounded-full border transition-all duration-300",
+              "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1 md:py-1.5 rounded-full border transition-all duration-300",
               isTimeCritical ? "bg-red-50 text-red-600 border-red-200 animate-pulse" : "bg-slate-100 text-slate-700 border-slate-200"
             )}>
-              <Clock className={cn("w-4 h-4", isTimeCritical ? "text-red-500" : "text-slate-500")} />
-              <span className="font-mono font-bold text-sm">
+              <Clock className={cn("w-3 h-3 md:w-4 md:h-4", isTimeCritical ? "text-red-500" : "text-slate-500")} />
+              <span className="font-mono font-bold text-[10px] md:text-sm">
                 {Math.floor(mcqTimer / 3600).toString().padStart(2, '0')}:
                 {Math.floor((mcqTimer % 3600) / 60).toString().padStart(2, '0')}:
                 {(mcqTimer % 60).toString().padStart(2, '0')}
@@ -472,96 +549,58 @@ export default function TestInterface({ user }: { user: any }) {
         </header>
 
         <div className="flex flex-1 overflow-hidden relative">
-          {/* SIDEBAR NAVIGATION */}
-          <aside className={cn(
-            "w-[280px] h-full bg-white border-r border-slate-200 flex flex-col shadow-sm transition-all duration-300",
-            !isSidebarOpen && "md:-ml-[280px]"
-          )}>
-            <div className="p-5 border-b border-slate-100">
-              <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4">{t('question_palette')}</h4>
-              <div className="grid grid-cols-5 gap-2.5">
-                {mcqQuestions.map((_, i) => {
-                  const isSelected = mcqIndex === i;
-                  const isAnswered = !!mcqResponses[mcqQuestions[i].id];
-                  const isMarked = markedForReview.has(i);
-                  
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setMcqIndex(i)}
-                      className={cn(
-                        "w-10 h-10 rounded-md flex items-center justify-center text-xs font-bold transition-all border",
-                        isSelected ? "ring-2 ring-indigo-500 ring-offset-2" : "",
-                        isMarked 
-                          ? "bg-purple-500 text-white border-purple-600" 
-                          : isAnswered 
-                            ? "bg-emerald-500 text-white border-emerald-600" 
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-                      )}
-                    >
-                      {i + 1}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              <div>
-                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">{t('legend')}</h4>
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
-                    <div className="w-3.5 h-3.5 rounded bg-emerald-500" /> {t('answered')}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
-                    <div className="w-3.5 h-3.5 rounded bg-purple-500" /> {t('marked_review')}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
-                    <div className="w-3.5 h-3.5 rounded bg-slate-50 border border-slate-200" /> {t('not_visited')}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 border-t border-slate-100 bg-slate-50/50">
-              <Button 
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 shadow-lg shadow-indigo-100"
-                onClick={handleSubmitTest}
-              >
-                {t('submit_test')}
-              </Button>
-            </div>
+          {/* DESKTOP SIDEBAR */}
+          <aside className="hidden md:flex flex-col">
+            {renderPalette()}
           </aside>
 
+          {/* MOBILE DRAWER TRIGGER */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="md:hidden fixed right-4 bottom-24 z-40 bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl rounded-full w-14 h-14 p-0 flex items-center justify-center border-none"
+              >
+                <LayoutGrid className="w-7 h-7" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] p-0 border-l border-slate-200">
+              <SheetHeader className="p-5 border-b border-slate-100 bg-slate-50 shadow-sm">
+                <SheetTitle className="text-sm font-bold text-slate-500 uppercase tracking-widest">Navigation</SheetTitle>
+              </SheetHeader>
+              {renderPalette(true)}
+            </SheetContent>
+          </Sheet>
+
           {/* MAIN CONTENT */}
-          <main className="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6 md:p-10 scroll-smooth">
+          <main className="flex-1 flex flex-col min-w-0 bg-[#F8F9FA] overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 md:p-10 scroll-smooth">
               {mcqLoading ? (
                 <div className="h-full flex flex-col items-center justify-center gap-4 text-indigo-600">
                   <Loader2 className="w-12 h-12 animate-spin" />
                   <p className="font-medium animate-pulse">{t('loading_questions')}</p>
                 </div>
               ) : (
-                <div className="max-w-3xl mx-auto w-full space-y-8 pb-32">
-                  <div className="flex justify-between items-center border-b border-slate-200 pb-5">
+                <div className="max-w-3xl mx-auto w-full space-y-4 md:space-y-8 pb-32">
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-3 md:pb-5">
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">{t('question')} {mcqIndex + 1}</h2>
-                      <span className="text-xs text-slate-500">MCQ Single Correct Option</span>
+                      <h2 className="text-lg md:text-xl font-bold text-slate-900">{t('question')} {mcqIndex + 1}</h2>
+                      <span className="text-[10px] text-slate-500">MCQ Single Correct Option</span>
                     </div>
-                    <Badge variant="outline" className="bg-white px-3 py-1 text-[10px] font-bold border-slate-200">
+                    <Badge variant="outline" className="bg-white px-2 md:px-3 py-1 text-[9px] md:text-[10px] font-bold border-slate-200">
                       Phase II: Logic
                     </Badge>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="p-8 bg-white border border-slate-200 rounded-2xl shadow-sm min-h-[140px] flex items-center relative overflow-hidden">
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="p-5 md:p-8 bg-white border border-slate-200 rounded-xl md:rounded-2xl shadow-sm min-h-[100px] md:min-h-[140px] flex items-center relative overflow-hidden">
                       {translating && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-600" /></div>}
-                      <p className="text-xl md:text-2xl font-serif text-slate-800 italic leading-relaxed">
+                      <p className="text-[15px] md:text-2xl font-serif text-slate-800 italic leading-relaxed">
                         {currentQuestion?.question}
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-2.5 md:gap-3">
                       {currentQuestion?.options.map((opt: string, i: number) => {
                         const isSelected = mcqResponses[mcqQuestions[mcqIndex].id] === mcqQuestions[mcqIndex].options[i];
                         return (
@@ -569,19 +608,19 @@ export default function TestInterface({ user }: { user: any }) {
                             key={i}
                             onClick={() => handleSelectOption(mcqQuestions[mcqIndex].options[i])}
                             className={cn(
-                              "flex items-center gap-4 p-5 rounded-xl border-2 text-left transition-all group",
+                              "flex items-center gap-3 md:gap-4 p-4 md:p-5 rounded-xl border-2 text-left transition-all group min-h-[60px] md:min-h-0",
                               isSelected 
                                 ? "bg-indigo-50 border-indigo-500 shadow-md shadow-indigo-100" 
-                                : "bg-white border-slate-100 hover:border-indigo-200 hover:bg-slate-50"
+                                : "bg-white border-slate-100 active:bg-slate-50 md:hover:border-indigo-200 md:hover:bg-slate-50"
                             )}
                           >
                             <div className={cn(
-                              "w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-colors",
+                              "w-8 h-8 md:w-9 md:h-9 rounded-full border-2 flex items-center justify-center text-[11px] md:text-xs font-bold transition-colors shrink-0",
                               isSelected ? "bg-indigo-500 border-indigo-500 text-white" : "border-slate-200 group-hover:border-indigo-300 text-slate-400 group-hover:text-indigo-600"
                             )}>
                               {String.fromCharCode(65 + i)}
                             </div>
-                            <span className={cn("font-medium text-base", isSelected ? "text-indigo-900" : "text-slate-600")}>{opt}</span>
+                            <span className={cn("font-medium text-sm md:text-base", isSelected ? "text-indigo-900" : "text-slate-600")}>{opt}</span>
                           </button>
                         );
                       })}
@@ -592,14 +631,21 @@ export default function TestInterface({ user }: { user: any }) {
             </div>
 
             {/* FOOTER */}
-            <footer className="h-20 bg-white border-t border-slate-200 px-6 flex items-center justify-between z-30 shrink-0">
-               <div className="flex items-center gap-3">
-                 <Button variant="outline" className="h-11 px-4 font-bold border-slate-200" onClick={handlePrev} disabled={mcqIndex === 0}><ChevronLeft className="w-4 h-4 mr-2" /> {t('previous')}</Button>
-                 <Button variant="ghost" className={cn("h-11 px-4 font-bold transition-all", markedForReview.has(mcqIndex) ? "text-purple-600 bg-purple-50" : "text-slate-500")} onClick={toggleMarkForReview}><Bookmark className={cn("w-4 h-4 mr-2", markedForReview.has(mcqIndex) && "fill-current")} /> {t('mark_for_review')}</Button>
+            <footer className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-slate-200 px-4 md:px-6 flex items-center justify-between z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+               <div className="flex items-center gap-2 md:gap-3">
+                 <Button variant="outline" className="h-10 md:h-11 px-3 md:px-4 text-[11px] md:text-sm font-bold border-slate-200 rounded-lg md:rounded-xl" onClick={handlePrev} disabled={mcqIndex === 0}>
+                   <ChevronLeft className="w-4 h-4 md:mr-2" /> 
+                   <span className="hidden sm:inline">{t('previous')}</span>
+                 </Button>
+                 <Button variant="ghost" className={cn("h-10 md:h-11 px-3 md:px-4 text-[11px] md:text-sm font-bold transition-all rounded-lg md:rounded-xl", markedForReview.has(mcqIndex) ? "text-purple-600 bg-purple-50" : "text-slate-500")} onClick={toggleMarkForReview}>
+                   <Bookmark className={cn("w-4 h-4 md:mr-2", markedForReview.has(mcqIndex) && "fill-current")} /> 
+                   <span className="hidden sm:inline">{t('mark_for_review')}</span>
+                   <span className="sm:hidden">{markedForReview.has(mcqIndex) ? 'Marked' : 'Mark'}</span>
+                 </Button>
                </div>
                <div className="flex items-center gap-3">
                  <Button 
-                    className="h-11 px-8 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100" 
+                    className="h-10 md:h-11 px-6 md:px-8 text-[11px] md:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100 rounded-lg md:rounded-xl" 
                     onClick={handleNext}
                     disabled={mcqIndex === mcqQuestions.length - 1}
                   >
