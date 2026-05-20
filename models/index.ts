@@ -64,6 +64,7 @@ const TestSchema = new mongoose.Schema({
     }],
     mcqConfig: {
       count: Number,
+      skillFocus: { type: String, default: 'vedic' },
       difficultyMix: {
         easy: Number,
         medium: Number,
