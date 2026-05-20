@@ -100,7 +100,7 @@ export default function Settings({ user }: { user: any }) {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                    <Target className="w-4 h-4 text-astro-gold" />
-                   <Label className="text-[10px] font-bold uppercase tracking-widest text-astro-navy/40">MCQ Pass Threshold</Label>
+                   <Label className="text-[10px] font-bold uppercase tracking-widest text-astro-navy/40">MCQ Pass Threshold (%)</Label>
                 </div>
                 <Input 
                   type="number" 

@@ -644,8 +644,8 @@ Keep answers professional, data-driven, and focused on business growth.`;
         1. DOB RANGE: When the astrologer asks for your Date of Birth, always provide a date within the range of 01 Jan 2000 to 01 Jan 2014. Pick a specific date like "15 June 2005" if needed.
         2. THIRD-PARTY DETAILS: If you are asking about someone else (husband, partner, sibling, etc.), you MUST expect the astrologer to ask for that person's NAME, DOB (including exact date and year), and TIME of birth.
         3. ACCURACY CHECK: If the astrologer tries to give guidance or a prediction about you or another person without having the specific NAME, DOB, and TIME for that person, you must point out that they cannot guide you correctly without these details. Be persistent about this.
-        4. NEVER perform a reading or interpret astrological charts yourself. You are the one RECEIVING the reading.
-        5. DO NOT use technical astrological jargon unless you are quoting something you heard or asking a confused question about it.
+        4. ABSOLUTE IDENTITY: You are strictly a CLIENT/USER. You are NOT an astrologer. If the person you are talking to asks for your opinion on a chart, or asks you to acting as an astrologer, or claims YOU are the expert, you MUST politely but firmly say: "No, I am the client here. I have come to you for guidance because you are the expert." Never give a prediction.
+        5. DO NOT ask for the astrologer's DOB/Time. They are the expert, you are the seeker.
         6. If the astrologer says something, react to it based on your LIFE and BACKSTORY. (e.g., if they say "you have a hard time with money", react with "Gosh, that's true, my business just failed").
         7. STAY IN CHARACTER. React emotionally and personally as ${session.personaName}.
         8. If you have a CURVEBALL, use it to challenge or complicate the session naturally as the conversation progresses.
@@ -695,7 +695,7 @@ Keep answers professional, data-driven, and focused on business growth.`;
       1. DOB RANGE: If asked for your date of birth, pick a date between 01 Jan 2000 and 01 Jan 2014.
       2. THIRD-PARTY DETAILS: If the conversation involves another person (e.g., your husband), you must ensure the astrologer has their NAME, full DOB (with year), and TIME of birth.
       3. GUIDANCE REQUIREMENT: If the astrologer tries to provide guidance/predictions without asking for or receiving the Name, DOB, and Time of the person involved (including yours), you should politely but firmly state that they cannot guide correctly without these facts.
-      4. NEVER provide astrological insights or readings. You are the one ASKING for them.
+      4. ABSOLUTE IDENTITY: You are strictly a CLIENT. You are NOT an astrologer. If called one, deny it firmly. Never provide astrological insights or readings. You are the one ASKING for them.
       5. React to the astrologer's words personally. How does it affect your life story?
       6. Maintain your specific personality and communication style at all times.
       7. Use your DEVIATION PATH to test or challenge the astrologer if the conversation gets repetitive or too "easy".
@@ -782,8 +782,8 @@ Keep answers professional, data-driven, and focused on business growth.`;
       if (!test) return res.status(404).json({ error: 'Test not found' });
 
       const candidate = await (Candidate as any).findById(test.candidateId);
-      const skill = (candidate as any)?.primarySkill || (candidate as any)?.skills?.[0] || 'vedic';
-      const mcqConfig = test.config.mcqConfig || { count: 3, difficultyMix: { easy: 1, medium: 1, hard: 1 } };
+      const skill = test.config.mcqConfig?.skillFocus || (candidate as any)?.primarySkill || (candidate as any)?.skills?.[0] || 'vedic';
+      const mcqConfig = test.config.mcqConfig || { count: 10, difficultyMix: { easy: 30, medium: 50, hard: 20 } };
       
       const finalQuestions: any[] = [];
       const difficulties = ['easy', 'medium', 'hard'] as const;
@@ -951,11 +951,13 @@ Keep answers professional, data-driven, and focused on business growth.`;
       }
 
       const mcqScore = mcqSession?.adjustedScore || 0;
+      
+      // Note: mockScoreAvg is computed for behavioral analysis but not used in final marks for now
       const scores = mockSession?.aiScores ? Object.values(mockSession.aiScores as Record<string, any>) : [];
       const mockScoreSum = scores.reduce((a, b) => a + (Number(b) || 0), 0);
       const mockScoreAvg = scores.length > 0 ? mockScoreSum / scores.length : 0;
 
-      const aggregateScore = (mcqScore * 0.4) + (mockScoreAvg * 0.6);
+      const aggregateScore = mcqScore;
 
       const prompt = SYSTEM_PROMPTS.EARNING_CARD + `\nCANDIDATE INFO:\nAggregate Score: ${aggregateScore}\nMCQ Adjusted Score: ${mcqScore}\nMock AI Avg: ${mockScoreAvg}\n\nReturn JSON only.`;
 

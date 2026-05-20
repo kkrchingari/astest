@@ -24,7 +24,8 @@ export default function CreateTest() {
   ]);
   const [mcqConfig, setMcqConfig] = useState({
     count: 20,
-    difficultyMix: { easy: 30, medium: 50, hard: 20 }
+    difficultyMix: { easy: 30, medium: 50, hard: 20 },
+    skillFocus: 'vedic'
   });
   const [candidateSearch, setCandidateSearch] = useState('');
   const [recentTests, setRecentTests] = useState<any[]>([]);
@@ -259,7 +260,28 @@ export default function CreateTest() {
             </Badge>
           </CardHeader>
           <CardContent className="p-10">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+              <div className="space-y-3">
+                <Label className="text-[9px] uppercase tracking-widest font-black text-astro-navy/40">Skill Focus</Label>
+                <Select 
+                  value={mcqConfig.skillFocus} 
+                  onValueChange={(val) => setMcqConfig({...mcqConfig, skillFocus: val})}
+                >
+                  <SelectTrigger className="h-14 bg-astro-cream/20 border-astro-gold/20 rounded-xl">
+                    <SelectValue placeholder="Skill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vedic">Vedic Astrology</SelectItem>
+                    <SelectItem value="tarot">Tarot Reading</SelectItem>
+                    <SelectItem value="palmistry">Palmistry</SelectItem>
+                    <SelectItem value="numerology">Numerology</SelectItem>
+                    <SelectItem value="vastu">Vastu Shastra</SelectItem>
+                    <SelectItem value="kp">KP Astrology</SelectItem>
+                    <SelectItem value="lal_kitab">Lal Kitab</SelectItem>
+                    <SelectItem value="western">Western Astrology</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-3">
                 <Label className="text-[9px] uppercase tracking-widest font-black text-astro-navy/40">Total Questions</Label>
                 <Input 
